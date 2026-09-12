@@ -1,4 +1,5 @@
 import SwiftUI
+import Auth
 
 struct MainTabView: View {
     @Environment(AuthViewModel.self) private var authViewModel
@@ -22,22 +23,29 @@ struct MainTabView: View {
 // MARK: - Athlete / Parent tabs
 
 private struct AthleteTabView: View {
+    @State private var selection = 0
+
     var body: some View {
-        TabView {
-            Text("Dashboard — coming soon")
+        TabView(selection: $selection) {
+            DashboardView(tabSelection: $selection)
                 .tabItem { Label("Home", systemImage: "house") }
+                .tag(0)
 
-            Text("Profile Editor — coming soon")
+            ProfileEditView()
                 .tabItem { Label("Profile", systemImage: "person") }
+                .tag(1)
 
-            Text("Colleges — coming soon")
+            CollegeListView()
                 .tabItem { Label("Colleges", systemImage: "building.2") }
+                .tag(2)
 
             Text("Messages — coming soon")
                 .tabItem { Label("Messages", systemImage: "message") }
+                .tag(3)
 
             MoreView()
                 .tabItem { Label("More", systemImage: "ellipsis") }
+                .tag(4)
         }
         .tint(Color.hubGold)
     }

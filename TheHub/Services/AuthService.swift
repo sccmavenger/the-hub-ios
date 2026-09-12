@@ -32,7 +32,11 @@ final class AuthService {
 
         try await supabase
             .from("athletes")
-            .insert(["user_id": userId, "full_name": fullName, "is_published": false])
+            .insert([
+                "user_id": AnyJSON.string(userId),
+                "full_name": .string(fullName),
+                "is_published": .bool(false)
+            ])
             .execute()
     }
 

@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		66BC72F23053AC2A008A2F1C /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 66BC72F13053AC2A008A2F1C /* Supabase */; };
+		66BC72F53053AC67008A2F1C /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 66BC72F43053AC67008A2F1C /* Kingfisher */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		664FCC973052925500C271FD /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +57,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				66BC72F53053AC67008A2F1C /* Kingfisher in Frameworks */,
+				66BC72F23053AC2A008A2F1C /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +119,8 @@
 			);
 			name = TheHub;
 			packageProductDependencies = (
+				66BC72F13053AC2A008A2F1C /* Supabase */,
+				66BC72F43053AC67008A2F1C /* Kingfisher */,
 			);
 			productName = TheHub;
 			productReference = 664FCC873052925300C271FD /* TheHub.app */;
@@ -195,6 +204,10 @@
 			);
 			mainGroup = 664FCC7E3052925300C271FD;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				66BC72F03053AC2A008A2F1C /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				66BC72F33053AC67008A2F1C /* XCRemoteSwiftPackageReference "Kingfisher" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 664FCC883052925300C271FD /* Products */;
 			projectDirPath = "";
@@ -570,6 +583,38 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		66BC72F03053AC2A008A2F1C /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+		66BC72F33053AC67008A2F1C /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/onevcat/Kingfisher";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.12.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		66BC72F13053AC2A008A2F1C /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 66BC72F03053AC2A008A2F1C /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+		66BC72F43053AC67008A2F1C /* Kingfisher */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 66BC72F33053AC67008A2F1C /* XCRemoteSwiftPackageReference "Kingfisher" */;
+			productName = Kingfisher;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 664FCC7F3052925300C271FD /* Project object */;
 }

@@ -9,6 +9,6 @@ let supabase = SupabaseClient(
 )
 
 enum Secrets {
-    static let supabaseURL = "YOUR_SUPABASE_URL"
-    static let supabaseAnonKey = "YOUR_SUPABASE_ANON_KEY"
+    static let supabaseURL = "https://fnlufxhznqclpajyadcc.supabase.co"
+    static let supabaseAnonKey = "sb_publishable_f7sNQNdrw2sj8_sslhabOw_piq-h48b"
 }

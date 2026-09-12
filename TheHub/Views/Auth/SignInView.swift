@@ -18,18 +18,15 @@ struct SignInView: View {
                     VStack(spacing: 32) {
                         Spacer().frame(height: 40)
 
-                        // Logo
-                        VStack(spacing: 8) {
-                            Image(systemName: "basketball")
-                                .font(.system(size: 64))
-                                .foregroundStyle(Color.hubGold)
-                            Text("The Hub")
-                                .font(.largeTitle.bold())
-                                .foregroundStyle(.white)
-                            Text("by Summit Hoops")
-                                .font(.subheadline)
-                                .foregroundStyle(Color.hubTextSecondary)
-                        }
+                        // Logo — navy artwork, so it sits on a white card over the dark theme
+                        Image("HubLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 230)
+                            .padding(.vertical, 20)
+                            .padding(.horizontal, 16)
+                            .background(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 20))
 
                         VStack(spacing: 16) {
                             HubTextField(
