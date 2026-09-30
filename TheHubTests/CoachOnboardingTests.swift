@@ -144,4 +144,104 @@ struct CoachOnboardingTests {
         #expect(AppRole.coach.displayName == "College Coach")
         #expect(AppRole.coach.rawValue == "coach")
     }
+
+    // MARK: - Shared claims form
+
+    @Test("Claims round-trip from a request and produce an explicit-null RPC payload")
+    func claimsFromRequest() throws {
+        var request = try JSONDecoder().decode(CoachRequest.self, from: Data(Self.pendingRequestJSON.utf8))
+        request.athleticsUrl = nil
+        let claims = CoachProgramClaims(from: request)
+
+        #expect(claims.title == "Assistant Coach")
+        #expect(claims.institution == "Test University")
+        #expect(claims.sportGender == .mens)
+        #expect(claims.governingBody == .ncaa)
+        #expect(claims.numberedDivision == "D1")
+        #expect(claims.isComplete)
+
+        let payload = claims.rpcPayload
+        #expect(payload["governing_body"] == .string("NCAA"))
+        #expect(payload["division"] == .string("D1"))
+        #expect(payload["athletics_url"] == .null, "cleared fields are sent as null so the server clears them")
+        #expect(payload["program_url"] == .string("https://athletics.example.test/mbb"))
+        #expect(payload.keys.contains("status") == false)
+    }
+
+    @Test("NCAA claims are incomplete without a division; NAIA needs none")
+    func claimsCompleteness() {
+        var claims = CoachProgramClaims()
+        claims.title = "Head Coach"
+        claims.institution = "Test College"
+        claims.sportGender = .womens
+        claims.governingBody = .ncaa
+        #expect(!claims.isComplete)
+        claims.numberedDivision = "D2"
+        #expect(claims.isComplete)
+        #expect(claims.division == "D2")
+
+        claims.governingBody = .naia
+        #expect(claims.isComplete)
+        #expect(claims.division == nil, "NAIA basketball is a single division")
+
+        claims.governingBody = .other
+        claims.divisionText = "Club"
+        #expect(claims.division == "Club")
+    }
+
+    @Test("Bare hostnames get https; empty stays nil")
+    func urlNormalization() {
+        #expect(CoachProgramClaims.normalizedURL("athletics.example.test/staff") == "https://athletics.example.test/staff")
+        #expect(CoachProgramClaims.normalizedURL("HTTP://x.test") == "HTTP://x.test")
+        #expect(CoachProgramClaims.normalizedURL("   ") == nil)
+    }
+
+    // MARK: - Account-state routing (spec §16, §40)
+
+    private func request(status: CoachRequestStatus) throws -> CoachRequest {
+        let json = Self.pendingRequestJSON.replacingOccurrences(
+            of: "\"status\": \"pending\"", with: "\"status\": \"\(status.rawValue)\""
+        )
+        return try JSONDecoder().decode(CoachRequest.self, from: Data(json.utf8))
+    }
+
+    @Test("Roles route by precedence regardless of any coach application")
+    func rolesTakePrecedence() throws {
+        let pending = try request(status: .pending)
+        #expect(AccountStateResolver.route(roles: [.athlete], roleLoadFailed: false, coachRequest: .notLoaded) == .athlete)
+        #expect(AccountStateResolver.route(roles: [.parent], roleLoadFailed: false, coachRequest: .loaded(pending)) == .parent)
+        #expect(AccountStateResolver.route(roles: [.coach], roleLoadFailed: false, coachRequest: .loaded(pending)) == .coach)
+        #expect(AccountStateResolver.route(roles: [.admin, .coach], roleLoadFailed: false, coachRequest: .notLoaded) == .admin)
+        #expect(AccountStateResolver.route(roles: [.parent, .athlete], roleLoadFailed: false, coachRequest: .failed) == .athlete)
+    }
+
+    @Test("Each application status has its own route; approved-without-role means paused")
+    func applicationStatusRoutes() throws {
+        for (status, expected): (CoachRequestStatus, (CoachRequest) -> AccountRoute) in [
+            (.pending, AccountRoute.coachPending),
+            (.needsMoreInformation, AccountRoute.coachNeedsInformation),
+            (.rejected, AccountRoute.coachRejected),
+            (.withdrawn, AccountRoute.coachWithdrawn),
+            (.approved, AccountRoute.coachAccessPaused)
+        ] {
+            let r = try request(status: status)
+            #expect(
+                AccountStateResolver.route(roles: [], roleLoadFailed: false, coachRequest: .loaded(r)) == expected(r),
+                "status \(status.rawValue)"
+            )
+        }
+    }
+
+    @Test("Nil role is not treated as coach-pending")
+    func nilRoleIsNotPending() {
+        #expect(AccountStateResolver.route(roles: [], roleLoadFailed: false, coachRequest: .notLoaded) == .loading)
+        #expect(AccountStateResolver.route(roles: [], roleLoadFailed: false, coachRequest: .loaded(nil)) == .accountConfigurationError)
+        #expect(AccountStateResolver.route(roles: [], roleLoadFailed: true, coachRequest: .notLoaded) == .roleLoadError)
+        #expect(AccountStateResolver.route(roles: [], roleLoadFailed: false, coachRequest: .failed) == .roleLoadError)
+    }
+
+    @Test("A role fetch failure never overrides cached roles")
+    func roleFailureKeepsCachedRoles() {
+        #expect(AccountStateResolver.route(roles: [.athlete], roleLoadFailed: true, coachRequest: .failed) == .athlete)
+    }
 }

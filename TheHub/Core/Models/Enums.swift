@@ -19,7 +19,8 @@ enum AppRole: String, Codable, CaseIterable {
 }
 
 /// Mirrors the `coach_requests.status` check constraint (supabase/014).
-enum CoachRequestStatus: String, Codable {
+/// nonisolated: used by the nonisolated CoachRequest model (decoded off-main).
+nonisolated enum CoachRequestStatus: String, Codable, Sendable {
     case pending
     case approved
     case rejected
@@ -40,7 +41,7 @@ enum CoachRequestStatus: String, Codable {
 /// Athletics governing bodies a coach may claim. Stored as the raw value in
 /// `coach_requests.governing_body` / `recruiting_programs.governing_body`;
 /// the rules engine keys rules on the same strings.
-enum GoverningBody: String, Codable, CaseIterable, Identifiable {
+nonisolated enum GoverningBody: String, Codable, CaseIterable, Identifiable, Sendable {
     case ncaa = "NCAA"
     case naia = "NAIA"
     case njcaa = "NJCAA"
@@ -119,7 +120,7 @@ enum CollegeStatus: String, Codable, CaseIterable {
     }
 }
 
-enum SportGender: String, Codable, CaseIterable {
+nonisolated enum SportGender: String, Codable, CaseIterable, Sendable {
     case mens
     case womens
 

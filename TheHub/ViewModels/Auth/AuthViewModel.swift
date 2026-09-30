@@ -12,6 +12,10 @@ final class AuthViewModel {
     /// instead of misrouting the user to the pending-approval dead end.
     var roleLoadFailed = false
 
+    /// The signed-in user's coach application, fetched only when the account
+    /// holds no role (that is the only case where it decides routing).
+    var coachRequestLoad: CoachRequestLoad = .notLoaded
+
     var primaryRole: AppRole? {
         if currentRoles.contains(.admin) { return .admin }
         if currentRoles.contains(.coach) { return .coach }
@@ -20,8 +24,14 @@ final class AuthViewModel {
         return nil
     }
 
-    var isCoachPendingApproval: Bool {
-        session != nil && currentRoles.isEmpty
+    /// What MainTabView shows. See AccountStateResolver — a role-less account
+    /// is a pending coach only if a coach application actually exists.
+    var accountRoute: AccountRoute {
+        AccountStateResolver.route(
+            roles: currentRoles,
+            roleLoadFailed: roleLoadFailed,
+            coachRequest: coachRequestLoad
+        )
     }
 
     func initialize() async {
@@ -70,6 +80,21 @@ final class AuthViewModel {
         }
         session = nil
         currentRoles = []
+        coachRequestLoad = .notLoaded
+    }
+
+    /// After an RPC returned the updated application (edit, withdraw), adopt it
+    /// without a round trip.
+    func applyCoachRequest(_ request: CoachRequest) {
+        coachRequestLoad = .loaded(request)
+    }
+
+    /// Re-reads the caller's coach application (status screen pull-to-refresh,
+    /// "check again" after an admin decision).
+    func refreshCoachRequest() async {
+        guard let userId = session?.user.id.uuidString
+                ?? supabase.auth.currentUser?.id.uuidString else { return }
+        await loadCoachRequest(userId: userId)
     }
 
     func resetPassword(email: String) async -> Bool {
@@ -101,6 +126,25 @@ final class AuthViewModel {
             // token refresh must not flip a signed-in user into the
             // no-role/pending state.
             roleLoadFailed = currentRoles.isEmpty
+            return
+        }
+        if currentRoles.isEmpty {
+            // Role-less account: a coach applicant, a coach whose membership was
+            // suspended, or a misconfigured account. The application decides.
+            await loadCoachRequest(userId: userId)
+        } else {
+            coachRequestLoad = .notLoaded
+        }
+    }
+
+    private func loadCoachRequest(userId: String) async {
+        do {
+            let request = try await CoachOnboardingService.shared.fetchMyRequest(userId: userId)
+            coachRequestLoad = .loaded(request)
+        } catch {
+            // Don't downgrade a known state on a transient failure.
+            if case .loaded = coachRequestLoad { return }
+            coachRequestLoad = .failed
         }
     }
 }

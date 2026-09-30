@@ -21,16 +21,7 @@ struct SignUpView: View {
 
     // College Coach application claims. Sent as signup metadata; the server
     // files a PENDING coach request and grants no role (supabase/014).
-    @State private var coachTitle = ""
-    @State private var institution = ""
-    @State private var coachSportGender: SportGender? = nil
-    @State private var governingBody: GoverningBody? = nil
-    @State private var numberedDivision: String? = nil
-    @State private var divisionText = ""
-    @State private var athleticsUrl = ""
-    @State private var programUrl = ""
-    @State private var phone = ""
-    @State private var verificationNote = ""
+    @State private var coachClaims = CoachProgramClaims()
 
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -190,44 +181,7 @@ struct SignUpView: View {
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            HubTextField(label: "Job Title", text: $coachTitle, textContentType: .jobTitle, autocapitalization: .words, maxLength: 120)
-            HubTextField(label: "Institution / College", text: $institution, textContentType: .organizationName, autocapitalization: .words, maxLength: 200)
-
-            HubSegmentedField(label: "Basketball Program", selection: $coachSportGender, options: SportGender.allCases) {
-                $0.displayName
-            }
-
-            HubMenuField(
-                label: "Association",
-                selection: $governingBody,
-                options: GoverningBody.allCases,
-                placeholder: "Select…"
-            ) { $0.displayName }
-
-            if let governingBody, governingBody.hasNumberedDivisions {
-                HubSegmentedField(label: "Division", selection: $numberedDivision, options: GoverningBody.numberedDivisions) {
-                    $0.replacingOccurrences(of: "D", with: "Division ")
-                }
-            } else if let governingBody, governingBody != .naia {
-                HubTextField(label: "Division / Level (optional)", text: $divisionText, autocapitalization: .words, maxLength: 40)
-            }
-
-            Text("Optional — speeds up verification")
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundStyle(Color.hubTextSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 4)
-
-            HubTextField(label: "Athletics Staff Directory URL", text: $athleticsUrl, keyboardType: .URL, textContentType: .URL)
-            HubTextField(label: "Program Website URL", text: $programUrl, keyboardType: .URL, textContentType: .URL)
-            HubTextField(label: "Phone", text: $phone, keyboardType: .phonePad, textContentType: .telephoneNumber, maxLength: 40)
-            HubMultilineField(
-                label: "Anything that helps us verify you",
-                text: $verificationNote,
-                placeholder: "e.g. where you're listed on the staff page",
-                maxLength: 2000
-            )
+            CoachProgramClaimsFields(claims: $coachClaims)
 
             Label(
                 "Coach access is reviewed before it's granted. You can sign in right away to track your application; athlete recruiting features unlock once we verify your program affiliation.",
@@ -286,41 +240,7 @@ struct SignUpView: View {
 
     /// The claims to submit, or nil while required coach fields are missing.
     private var coachApplication: AuthService.CoachApplication? {
-        guard !coachTitle.isBlank, !institution.isBlank,
-              let coachSportGender, let governingBody else { return nil }
-        let division: String?
-        if governingBody.hasNumberedDivisions {
-            // NCAA rules are division-specific; don't let an NCAA claim omit it.
-            guard let numberedDivision else { return nil }
-            division = numberedDivision
-        } else if governingBody == .naia {
-            division = nil
-        } else {
-            division = divisionText.isBlank ? nil : divisionText.trimmed
-        }
-        return AuthService.CoachApplication(
-            fullName: fullName.trimmed,
-            title: coachTitle.trimmed,
-            institution: institution.trimmed,
-            governingBody: governingBody,
-            division: division,
-            sportGender: coachSportGender,
-            athleticsUrl: Self.normalizedURL(athleticsUrl),
-            programUrl: Self.normalizedURL(programUrl),
-            phone: phone.isBlank ? nil : phone.trimmed,
-            note: verificationNote.isBlank ? nil : verificationNote.trimmed
-        )
-    }
-
-    /// Coaches type "athletics.school.edu/staff"; the server only keeps
-    /// http(s) URLs, so add the scheme rather than silently dropping the link.
-    private static func normalizedURL(_ raw: String) -> String? {
-        let value = raw.trimmed
-        guard !value.isEmpty else { return nil }
-        if value.lowercased().hasPrefix("http://") || value.lowercased().hasPrefix("https://") {
-            return value
-        }
-        return "https://" + value
+        coachClaims.application(fullName: fullName.trimmed)
     }
 
     private func signUp(role: AppRole) async {

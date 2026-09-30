@@ -3,7 +3,10 @@ import Foundation
 /// A coach's application for College Coach access (`coach_requests`). Every
 /// program field here is a *claim* awaiting admin review; the verified truth
 /// lives in `recruiting_programs` / `coach_program_memberships` once approved.
-struct CoachRequest: Codable, Identifiable {
+// nonisolated: the target defaults types to @MainActor; decoding happens off
+// the main actor inside the Supabase client, so the conformances must not be
+// actor-isolated.
+nonisolated struct CoachRequest: Codable, Identifiable, Equatable, Sendable {
     let id: String
     let userId: String
     var fullName: String

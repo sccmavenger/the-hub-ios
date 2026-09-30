@@ -6,20 +6,38 @@ struct MainTabView: View {
 
     var body: some View {
         Group {
-            switch authViewModel.primaryRole {
+            switch authViewModel.accountRoute {
+            case .loading:
+                AccountLoadingView()
             case .athlete, .parent:
                 AthleteTabView()
             case .coach:
                 WebToolsTabView()
             case .admin:
                 AdminTabView()
-            case nil:
-                if authViewModel.roleLoadFailed {
-                    RoleLoadErrorView()
-                } else {
-                    PendingApprovalView()
-                }
+            case .coachPending(let request),
+                 .coachNeedsInformation(let request),
+                 .coachRejected(let request),
+                 .coachWithdrawn(let request),
+                 .coachAccessPaused(let request):
+                CoachApplicantTabView(request: request)
+            case .roleLoadError:
+                RoleLoadErrorView()
+            case .accountConfigurationError:
+                AccountConfigurationErrorView()
             }
+        }
+    }
+}
+
+// MARK: - Loading
+
+private struct AccountLoadingView: View {
+    var body: some View {
+        ZStack {
+            Color.hubBackground.ignoresSafeArea()
+            ProgressView()
+                .tint(Color.hubPrimary)
         }
     }
 }
@@ -153,31 +171,76 @@ private struct RoleLoadErrorView: View {
     }
 }
 
-// MARK: - Coach pending approval
+// MARK: - Coach applicant (pending / needs info / rejected / withdrawn / paused)
 
-private struct PendingApprovalView: View {
+/// A coach whose application isn't (or is no longer) approved. Full account
+/// access — status, edit/resubmit, Account, legal, sign out — and zero athlete
+/// content: the account holds no coach role, and RLS enforces that regardless.
+private struct CoachApplicantTabView: View {
+    let request: CoachRequest
+
+    var body: some View {
+        TabView {
+            NavigationStack {
+                CoachApplicationStatusView(request: request)
+            }
+            .tabItem { Label("Application", systemImage: "checkmark.shield") }
+
+            MoreView()
+                .tabItem { Label("More", systemImage: "ellipsis") }
+        }
+        .tint(Color.hubPrimary)
+    }
+}
+
+// MARK: - No role, no application
+
+/// Signed in, but the account has no role and never filed a coach
+/// application — the sign-up trigger didn't run or the account was altered.
+/// Not a coach-pending state; don't dress it up as one.
+private struct AccountConfigurationErrorView: View {
     @Environment(AuthViewModel.self) private var authViewModel
+    @State private var isRetrying = false
 
     var body: some View {
         ZStack {
             Color.hubBackground.ignoresSafeArea()
             VStack(spacing: 20) {
-                Image(systemName: "clock.badge")
+                Image(systemName: "person.crop.circle.badge.exclamationmark")
                     .font(.system(size: 64))
-                    .foregroundStyle(Color.hubPrimary)
-                Text("Account Pending Approval")
+                    .foregroundStyle(Color.hubWarning)
+                Text("Your Account Needs Setup")
                     .font(.title2.bold())
                     .foregroundStyle(.white)
-                Text("Your coach account is under review. You'll receive an email once approved.")
+                Text("We couldn't find a role or a coach application for this account. Contact support and we'll sort it out.")
                     .font(.subheadline)
                     .foregroundStyle(Color.hubTextSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
+                if let url = URL(string: "mailto:\(HubSupport.email)?subject=Account%20setup") {
+                    Link("Contact Support", destination: url)
+                        .bold()
+                        .foregroundStyle(Color.hubPrimary)
+                }
+                Button {
+                    Task {
+                        isRetrying = true
+                        await authViewModel.refreshRoles()
+                        isRetrying = false
+                    }
+                } label: {
+                    if isRetrying {
+                        ProgressView().tint(Color.hubPrimary)
+                    } else {
+                        Text("Check Again")
+                    }
+                }
+                .foregroundStyle(Color.hubPrimary)
                 Button("Sign Out") {
                     Task { await authViewModel.signOut() }
                 }
-                .foregroundStyle(Color.hubPrimary)
-                .padding(.top, 8)
+                .font(.subheadline)
+                .foregroundStyle(Color.hubTextSecondary)
             }
         }
     }
