@@ -355,6 +355,27 @@ URLs verified live.
 **Lesson recorded:** never demo account deletion on a populated account —
 register a throwaway in the app and delete that.
 
+## 2h. App approved; demo accounts purged — 2026-09-29
+
+**App Store approval received 2026-09-29** (version 1.2, build 4).
+
+**Purge (Claude, 2026-09-29, at Danny's request):** all 12
+`@summithoops.example` accounts removed — 5 demo athletes (incl. the Apple
+review athlete), the review coach, 6 seeded coaches. Deleted in order: every
+dependent DB row (photos, events, colleges, contacts, NCAA readiness,
+guardians, invites, profile views, messages, saves, searches, requests,
+reports, blocks, notifications, athletes, roles, profiles), 30 storage
+objects across 5 `athlete-media` folders, then the auth users. Orphan scan
+across all tables returned zero. **Why:** published fictitious athletes would
+surface in real coaches' searches now that the app is live.
+
+**Consequence:** App Review Information no longer has a demo login (fields
+cleared, notes reworded). A fresh demo athlete must be seeded before the
+next submission — see TECH-DEBT #18. Recipe: create auth user via admin API
+with `signup_role`/`full_name`/`date_of_birth` metadata (trigger builds the
+rows), generate PIL sports-card images, upload to `athlete-media/{uid}/`,
+sign 1-year URLs, then seed events/colleges/contacts/consent/NCAA rows.
+
 ## 3. Accepted risks / deferred (with reasons)
 
 > **⚠️ This section is a frozen pre-submission snapshot.** The living tracker
