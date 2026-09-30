@@ -244,4 +244,71 @@ struct CoachOnboardingTests {
     func roleFailureKeepsCachedRoles() {
         #expect(AccountStateResolver.route(roles: [.athlete], roleLoadFailed: true, coachRequest: .failed) == .athlete)
     }
+
+    // MARK: - Program / membership models (admin + Coach Mode)
+
+    static let membershipWithProgramJSON = """
+    {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "coach_user_id": "22222222-2222-4222-8222-222222222222",
+      "program_id": "44444444-4444-4444-8444-444444444444",
+      "title": "Assistant Coach",
+      "membership_role": "assistant_coach",
+      "status": "verified",
+      "verified_at": "2026-09-30T19:00:00+00:00",
+      "verified_by": "55555555-5555-4555-8555-555555555555",
+      "started_at": "2026-09-30",
+      "ended_at": null,
+      "created_at": "2026-09-30T19:00:00+00:00",
+      "updated_at": "2026-09-30T19:00:00+00:00",
+      "recruiting_programs": {
+        "id": "44444444-4444-4444-8444-444444444444",
+        "institution_name": "Test University",
+        "normalized_institution_name": "test university",
+        "governing_body": "NCAA",
+        "division": "D1",
+        "sport": "basketball",
+        "sport_gender": "womens",
+        "athletics_url": null,
+        "program_url": null,
+        "official_url": null,
+        "active": true,
+        "verified_at": "2026-09-30T19:00:00+00:00",
+        "verified_by": "55555555-5555-4555-8555-555555555555",
+        "created_at": "2026-09-30T19:00:00+00:00",
+        "updated_at": "2026-09-30T19:00:00+00:00"
+      }
+    }
+    """
+
+    @Test("Decodes a membership with its embedded program")
+    func decodesMembershipWithProgram() throws {
+        let membership = try JSONDecoder().decode(CoachProgramMembership.self, from: Data(Self.membershipWithProgramJSON.utf8))
+        #expect(membership.status == .verified)
+        #expect(membership.roleDisplayName == "Assistant Coach")
+        let program = try #require(membership.program)
+        #expect(program.isVerified)
+        #expect(program.fullLabel == "Test University Women's Basketball")
+        #expect(program.divisionLabel == "NCAA Division I")
+    }
+
+    @Test("New-program payload for approval carries only confirmed attributes")
+    func newProgramPayload() {
+        let program = CoachAdminService.NewProgram(
+            institutionName: " Test University ", governingBody: .ncaa, division: "D2",
+            sportGender: .mens, athleticsUrl: nil, programUrl: ""
+        )
+        guard case .object(let object) = program.json else {
+            Issue.record("expected object")
+            return
+        }
+        #expect(object["institution_name"] == .string("Test University"))
+        #expect(object["governing_body"] == .string("NCAA"))
+        #expect(object["division"] == .string("D2"))
+        #expect(object["sport"] == .string("basketball"))
+        #expect(object["sport_gender"] == .string("mens"))
+        #expect(object["athletics_url"] == nil)
+        #expect(object["program_url"] == nil)
+        #expect(object["verified_at"] == nil, "verification is the server's call")
+    }
 }

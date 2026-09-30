@@ -108,16 +108,21 @@ private struct WebToolsTabView: View {
 
 // MARK: - Admin tabs
 
-/// Staff console. Full user/report/coach-approval management lives in the web
-/// admin portal; this surfaces the controls that have to be reachable from a
-/// phone — today the college-logo kill switch, which may need flipping fast.
+/// Staff console: coach application review (approve / reject / request info,
+/// membership suspension) and the remote feature switches. User and report
+/// management still live in the web admin portal.
 private struct AdminTabView: View {
     var body: some View {
         TabView {
             NavigationStack {
+                CoachApplicationsView()
+            }
+            .tabItem { Label("Coaches", systemImage: "checkmark.shield") }
+
+            NavigationStack {
                 AdminSettingsView()
             }
-            .tabItem { Label("Admin", systemImage: "slider.horizontal.3") }
+            .tabItem { Label("Settings", systemImage: "slider.horizontal.3") }
 
             MoreView()
                 .tabItem { Label("More", systemImage: "ellipsis") }
@@ -272,6 +277,9 @@ struct MoreView: View {
                             AccountView()
                         }
                         if authViewModel.currentRoles.contains(.admin) {
+                            NavigationLink("Coach Applications") {
+                                CoachApplicationsView()
+                            }
                             NavigationLink("Admin Settings") {
                                 AdminSettingsView()
                             }
