@@ -70,7 +70,7 @@ so match these by category to whatever the form shows.
 | User-generated content | **Yes** | Photos, bios, messages |
 | Messaging / chat between users | **Yes** | Athlete ↔ approved coach |
 | Unrestricted web access | **No** | No WKWebView or SFSafariViewController anywhere; the 4 external links hand off to system Safari |
-| Social media capability | **No** | No feed, no discovery, no amplification. Apple defines this as redistributing/amplifying/interacting with UGC via a feed or similar discovery method. Athletes can only fetch their own profile; coach browsing lives on the web app |
+| Social media capability | **No** | No feed, no discovery, no amplification. Apple defines this as redistributing/amplifying/interacting with UGC via a feed or similar discovery method. Athletes can only fetch their own profile; approved coaches see only their own verified program in this build (athlete discovery is a later release) |
 | Made for Kids | **No** | Under-13 signup is blocked |
 | In-app purchases | **No** | Free; no StoreKit |
 | Advertising | **No** | No ad SDKs |
@@ -210,6 +210,13 @@ Verified 2026-09-18: that account is email-confirmed, signs in successfully,
 and loads the fully populated "Jalen Brooks" demo profile.
 
 ### Review Notes
+
+> ⚠️ Updated 2026-09-30 for the coach-onboarding release (TECH-DEBT #29).
+> Item 3 is the text to paste; the 1.2 build that Apple approved carried the
+> older "web-only" wording. Decide before submitting whether to also seed a
+> demo **coach** account with a verified program so reviewers can see Coach
+> Home (recipe: approve a demo coach's application from the Coaches tab).
+
 ```
 The Hub is a recruiting profile platform for high school basketball players, most of whom are minors. Key context for review:
 
@@ -217,7 +224,7 @@ The Hub is a recruiting profile platform for high school basketball players, mos
 
 2. Minor safety: publishing a profile requires a date of birth, and any athlete under 18 must have recorded parent/guardian consent (name, email, timestamp) before the profile can be published. This is enforced in the database, not just the UI. Contact details are visible only to approved coaches who have saved the athlete.
 
-3. Coach accounts cannot self-activate. Every coach application is manually reviewed and approved by our staff before the account can view any athlete. Coach onboarding and athlete browsing happen on our web platform; this iOS app is the athlete and family experience. A coach or admin who signs in here sees a screen directing them to the web tools.
+3. Coach accounts cannot self-activate. College coaches may create an account in the app, but coach access is never granted automatically: creating the account files an application, and the coach signs in to a status screen with no athlete content until our staff manually verifies their affiliation with a specific college basketball program and approves it. Only then does the account receive the coach role, enforced in the database. In this release an approved coach sees their verified program and account settings; athlete discovery and messaging for coaches are a later release. (Previous submissions described coach onboarding as web-only; that changed in this version.)
 
 4. User-generated content (photos, bios, messages) is moderated by our admin team using web-based tools. Every conversation has in-app Report and Block actions; reports notify all administrators and are reviewed within 24 hours.
 

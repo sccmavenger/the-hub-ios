@@ -1,14 +1,15 @@
 <!-- CANONICAL. Identical text is compiled into the app
      (TheHub/Views/Legal/LegalView.swift) and published on the website.
      Users agree to this at sign-up — if you change one, change all three.
-     Last updated 2026-09-21. -->
+     Last updated 2026-09-30 (coach application details added). -->
 
 # The HUB — Privacy Policy
 
 This policy explains how Summit Hoops handles personal information in The HUB mobile app and on this website.
 
 INFORMATION WE COLLECT
-• Account details: name, email address, and the role you sign up with (athlete, parent, coach, or admin).
+• Account details: name, email address, and the role you sign up with (athlete, parent, or college coach).
+• Coach application details: job title, institution, program, association and division, and any staff-directory or program links, phone number, or note you provide so we can verify your affiliation. Reviewed by administrators; not shown to athletes.
 • Athlete profile details you enter: school, city and state, graduation year, position, height and weight, jersey number, GPA and test scores, bio, highlight video links, upcoming game schedule, and target schools.
 • Uploaded media: profile and action photos you choose to upload.
 • Contact details: guardian and high school coach contact information entered on a profile, shown only to approved college coaches.

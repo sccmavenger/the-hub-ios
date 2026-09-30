@@ -38,7 +38,7 @@ Then in Xcode:
 | 1 | Foundation — models, auth, tab scaffold | ✅ Done |
 | 2 | Athlete Core — dashboard, profile editor, public profile, college list | ⬜ Next |
 | 3 | Messaging & Family | ⬜ |
-| 4 | Coach Features — directory, games, pipeline | ⬜ |
+| 4 | Coach Features — onboarding/verification/Coach Mode entry ✅ (2026-09-30); directory, board, pipeline (Coach Workspace spec) ⬜ | 🟡 |
 | 5 | Insights & Admin | ⬜ |
 | 6 | Polish & App Store submission | ⬜ |
 
@@ -169,14 +169,52 @@ Recruiting rule authority moved out of the app into Supabase. Spec:
 - One deterministic SQL evaluator (`evaluate_recruiting_action`) serves iOS, web, and the
   `messages` BEFORE INSERT trigger. Swift only deserializes `RecruitingDecision`.
 - Flags in `app_settings`: `recruiting_rules_engine_enabled` = **true** (Stage A, display),
-  `recruiting_rules_enforcement_enabled` = **false** (Stage B hard-block; needs verified
-  coach→program rows, which wait for the coach-experience spec).
+  `recruiting_rules_enforcement_enabled` = **false** (Stage B hard-block). Unblocked
+  2026-09-30: approving a coach in-app now creates the verified program + membership rows.
+  Kept OFF by decision until real coach decisions have been watched in
+  `recruiting_compliance_decisions`; flip in More → Admin Settings.
 - D2/D3/NAIA/NJCAA have no sourced rule → `needs_review`. D3/NAIA/JUCO rows on the Colleges
   card keep their legacy orientation note by decision (TECH-DEBT #21).
 - Tests: `supabase/tests/*.test.sql` (3 suites, run via `scripts/db-query.sh`) and
   `TheHubTests/RecruitingRulesTests.swift` (13 tests).
 - Terms §6 rewritten in `docs/legal/terms-of-service.md` + `LegalView.swift`
   (last updated 2026-09-30). **Website `/terms` on Lovable still needs the same text.**
+
+## Coach Onboarding & Verification (added 2026-09-30)
+
+College Coach sign-up is back in the iOS app as an **application, not access**.
+Spec: `COACH-MODE-ONBOARDING-AND-VERIFICATION-SPEC.md` (Danny's Downloads);
+backend: `supabase/014-coach-onboarding.sql`; tests:
+`supabase/tests/coach-onboarding.test.sql` + `TheHubTests/CoachOnboardingTests.swift`.
+
+- **Sign-up** (`SignUpView`): Athlete / Parent-Guardian / College Coach. Coach claims
+  (title, institution, men's/women's, association, division, optional URLs/phone/note)
+  travel as signup metadata; `handle_new_user` files a **pending** `coach_requests` row
+  and grants **no role**. Email confirmation unchanged.
+- **Routing** (`AccountStateResolver`): roles win (admin > coach > athlete > parent).
+  A role-less account routes by its application — pending / needs info / rejected /
+  withdrawn / approved-but-paused — or to a retry screen, or to "account needs setup"
+  when no application exists. `nil role` is never assumed to mean "pending coach".
+- **Applicant screens** (`Views/Coach/`): status (claims under review, dates, reason),
+  edit/resubmit (`update_coach_application`), withdraw. No athlete content.
+- **Admin review** (`Views/Admin/CoachApplications*`, Coaches tab): queue → detail →
+  Approve (pick existing program or confirm a new one prefilled from claims) /
+  Request info / Reject (user-visible message + internal note) / Suspend-Reinstate.
+  All writes are 014 RPCs; approval is one transaction (program verified → membership
+  → `user_roles.coach` → request → notification).
+- **Coach role is derived**: `sync_coach_role()` keeps `user_roles.coach` = "has ≥1
+  verified membership in an active, verified program". Suspension removes it in the
+  same statement. BEFORE-trigger guards stop any authenticated client — including the
+  web admin portal — from flipping status / inserting coach / verifying membership
+  directly (TECH-DEBT #27).
+- **Coach Mode Phase 1** (`CoachHomeView`): verified program card + account; no
+  placeholder tabs. `CoachProgramService` exposes `CoachProgramContext` for the
+  Coach Workspace spec and the rules engine.
+- **Also fixed**: 007 had dropped the coach-role check on `coach_saved_athletes`
+  insert (any signed-in account could bookmark a published athlete); restored in 014.
+- Prod has **no coach applications yet**; the only account is the admin.
+  ⚠️ Before the next App Review submission: update review notes (coach sign-up exists,
+  access is manually approved) and consider a demo coach path (TECH-DEBT #18, #29).
 
 ## Tech Decisions Made
 - **iOS 17+ only** — uses `@Observable` macro, no Combine

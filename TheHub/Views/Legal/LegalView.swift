@@ -22,11 +22,12 @@ enum LegalDocument: String, Identifiable {
     }
 
     /// Terms: Section 6 rewritten 2026-09-30 for the Recruiting Rules Engine.
-    /// Privacy policy text is unchanged since 2026-09-21.
+    /// Privacy: "Coach application details" added 2026-09-30 (College Coach
+    /// sign-up collects title/institution/program/links for verification).
     var lastUpdated: String {
         switch self {
         case .terms: "September 30, 2026"
-        case .privacyPolicy: "September 21, 2026"
+        case .privacyPolicy: "September 30, 2026"
         }
     }
 
@@ -108,7 +109,11 @@ enum LegalDocument: String, Identifiable {
 
     INFORMATION WE COLLECT
     • Account details: name, email address, and the role you sign up with \
-    (athlete, parent, coach, or admin).
+    (athlete, parent, or college coach).
+    • Coach application details: job title, institution, program, association \
+    and division, and any staff-directory or program links, phone number, or note \
+    you provide so we can verify your affiliation. Reviewed by administrators; \
+    not shown to athletes.
     • Athlete profile details you enter: school, city and state, graduation year, \
     position, height and weight, jersey number, GPA and test scores, bio, \
     highlight video links, upcoming game schedule, and target schools.

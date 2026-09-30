@@ -109,9 +109,32 @@ Commit the migration and note the source in the commit message.
 ## Programs and coach verification
 
 Enforcement requires a `coach_program_memberships` row with
-`status = 'verified'` joined to a `recruiting_programs` row with
-`verified_at` set. Until the coach-experience work lands, verification is
-SQL-only and admin-performed:
+`status = 'verified'` joined to an active `recruiting_programs` row with
+`verified_at` set. Since 2026-09-30 (`supabase/014-coach-onboarding.sql`)
+these rows are created by **approving a coach application** — in the iOS
+app (admin → Coaches tab → application → Approve…) or by calling the RPC
+as an admin:
+
+```sql
+-- existing program (verifies it if it isn't yet)
+select approve_coach_request('<request id>', '<program id>', null, 'assistant_coach', 'Assistant Coach', 'verified on staff page');
+-- or a new program from admin-confirmed attributes
+select approve_coach_request('<request id>', null,
+  '{"institution_name":"Missouri State University","governing_body":"NCAA","division":"D1","sport_gender":"mens","athletics_url":"https://missouristatebears.com/"}',
+  'assistant_coach', 'Assistant Coach', 'verified on staff page');
+-- suspend / inactivate / reinstate (coach role follows in the same statement)
+select set_coach_membership_status('<membership id>', 'suspended', 'left program');
+```
+
+The coach role is *derived*: `sync_coach_role(user_id)` keeps
+`user_roles.coach` equal to "has ≥1 verified membership in an active,
+verified program", and membership/program triggers re-run it on every
+change. BEFORE triggers refuse, for any authenticated client (PostgREST,
+including the web admin portal), direct `coach_requests.status` flips,
+direct `user_roles (role = 'coach')` inserts, and direct verified
+membership inserts. Server-side contexts (`scripts/db-query.sh`, service
+role — `auth.uid()` is null) are exempt, so the raw inserts below still work
+for maintenance and tests, but the RPCs are the supported path:
 
 ```sql
 insert into recruiting_programs (institution_name, normalized_institution_name,
@@ -125,7 +148,7 @@ values ('<coach auth uid>', '<program id>', 'verified', now(), '<admin uid>');
 
 Never derive a program from `coach_requests.college` free text for
 enforcement. The bundled `Colleges.json` division may be used to *suggest*
-a mapping, not to verify one.
+a mapping, not to verify one. Tests: `supabase/tests/coach-onboarding.test.sql`.
 
 ## Rollout flags
 

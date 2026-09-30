@@ -376,6 +376,34 @@ with `signup_role`/`full_name`/`date_of_birth` metadata (trigger builds the
 rows), generate PIL sports-card images, upload to `athlete-media/{uid}/`,
 sign 1-year URLs, then seed events/colleges/contacts/consent/NCAA rows.
 
+## 2i. College Coach sign-up reintroduced on iOS — 2026-09-30
+
+Per `COACH-MODE-ONBOARDING-AND-VERIFICATION-SPEC.md`. **The access model
+described to Apple for 1.2 (iOS = athletes/families; coaches web-only) no
+longer matches the code on `main`.** Before the next submission, update App
+Review notes (see `docs/APPSTORE-CONNECT-FIELDS.md` §"App Review notes") and
+STATUS.md §"Coach Onboarding & Verification". TECH-DEBT #29.
+
+What changed, in access terms:
+
+- Sign-up offers **College Coach**. It creates a login and a **pending**
+  `coach_requests` row via the server trigger (`supabase/014`). **No role is
+  granted.** Row 1 of §2 (auto-approve removed) still holds; nothing
+  re-enables it.
+- A pending/rejected coach signs in to a status screen only. RLS unchanged:
+  every coach policy still requires `has_role('coach')`, which only
+  `approve_coach_request()` (admin, atomic) can produce. Verified by
+  `supabase/tests/coach-onboarding.test.sql` running as the `authenticated`
+  role: a pending coach sees 0 published athletes, cannot bookmark, cannot
+  message, cannot self-grant.
+- The coach role is **derived** from a verified program membership and is
+  removed in the same statement when the membership is suspended.
+- Row 6 of §2 (bookmark insert requires published athlete) had silently lost
+  the coach-role requirement in 007; 014 restores it (TECH-DEBT #30).
+- Approved coaches land on **Coach Home** (verified program + account), not a
+  "tools are on the web" signpost. No placeholder tabs — Discover/Board/
+  Messages wait for the Coach Workspace spec.
+
 ## 3. Accepted risks / deferred (with reasons)
 
 > **⚠️ This section is a frozen pre-submission snapshot.** The living tracker
