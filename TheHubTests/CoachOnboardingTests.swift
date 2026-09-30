@@ -292,6 +292,34 @@ struct CoachOnboardingTests {
         #expect(program.divisionLabel == "NCAA Division I")
     }
 
+    @Test("Program context only comes from verified memberships in active, verified programs")
+    func programContextMirrorsServerRule() throws {
+        let verified = try JSONDecoder().decode(CoachProgramMembership.self, from: Data(Self.membershipWithProgramJSON.utf8))
+
+        var suspended = verified
+        suspended.status = .suspended
+
+        var inactiveProgram = verified
+        inactiveProgram.program?.active = false
+
+        var unverifiedProgram = verified
+        unverifiedProgram.program?.verifiedAt = nil
+
+        var noProgramEmbedded = verified
+        noProgramEmbedded.program = nil
+
+        let contexts = CoachProgramContext.contexts(from: [suspended, inactiveProgram, unverifiedProgram, noProgramEmbedded, verified])
+        #expect(contexts.count == 1)
+        let context = try #require(contexts.first)
+        #expect(context.programId == "44444444-4444-4444-8444-444444444444")
+        #expect(context.institutionName == "Test University")
+        #expect(context.governingBody == "NCAA")
+        #expect(context.division == "D1")
+        #expect(context.sportGender == "womens")
+        #expect(context.programLabel == "Women's Basketball")
+        #expect(context.roleDisplayName == "Assistant Coach")
+    }
+
     @Test("New-program payload for approval carries only confirmed attributes")
     func newProgramPayload() {
         let program = CoachAdminService.NewProgram(

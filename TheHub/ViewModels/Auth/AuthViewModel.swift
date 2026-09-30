@@ -81,6 +81,7 @@ final class AuthViewModel {
         session = nil
         currentRoles = []
         coachRequestLoad = .notLoaded
+        CoachProgramService.shared.clear()
     }
 
     /// After an RPC returned the updated application (edit, withdraw), adopt it

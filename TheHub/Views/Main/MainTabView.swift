@@ -12,7 +12,7 @@ struct MainTabView: View {
             case .athlete, .parent:
                 AthleteTabView()
             case .coach:
-                WebToolsTabView()
+                CoachTabView()
             case .admin:
                 AdminTabView()
             case .coachPending(let request),
@@ -73,31 +73,18 @@ private struct AthleteTabView: View {
     }
 }
 
-// MARK: - Coach / admin accounts
+// MARK: - Coach Mode (approved coach)
 
-/// The iOS app is the athlete & family experience; coach and admin tools live
-/// on the web. Coach/admin sign-ins get this signpost plus the shared More
-/// screen (Account, sign out) instead of placeholder tabs.
-private struct WebToolsTabView: View {
+/// Phase 1 Coach Mode: Coach Home (verified program context) plus the shared
+/// More screen. No placeholder tabs — the Coach Workspace spec adds
+/// Discover / Recruiting Board / Messages / Program on top of this entry point.
+private struct CoachTabView: View {
     var body: some View {
         TabView {
-            ZStack {
-                Color.hubBackground.ignoresSafeArea()
-                VStack(spacing: 20) {
-                    Image(systemName: "desktopcomputer")
-                        .font(.system(size: 64))
-                        .foregroundStyle(Color.hubPrimary)
-                    Text("Your Tools Are on the Web")
-                        .font(.title2.bold())
-                        .foregroundStyle(.white)
-                    Text("The Hub app is built for athletes and their families. Coach and admin tools — athlete search, pipeline, messaging, and approvals — are available on The Hub for web.")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.hubTextSecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                }
+            NavigationStack {
+                CoachHomeView()
             }
-            .tabItem { Label("Overview", systemImage: "house") }
+            .tabItem { Label("Home", systemImage: "house") }
 
             MoreView()
                 .tabItem { Label("More", systemImage: "ellipsis") }
