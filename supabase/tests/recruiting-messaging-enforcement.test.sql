@@ -178,6 +178,10 @@ begin
   -- Cleanup ---------------------------------------------------------------------------
   update public.app_settings set bool_value = flag_before where key = 'recruiting_rules_enforcement_enabled';
   delete from public.recruiting_compliance_decisions where actor_user_id in (coach_id, coach_nomembership_id);
+  -- Since 014, signup_role = coach files a pending application and notifies
+  -- every admin; those admin notifications don't cascade with the users.
+  delete from public.notifications where type = 'coach_application_submitted'
+    and (body like 'Test Coach applied%' or body like 'Unverified Coach applied%');
   delete from auth.users where id in (coach_id, coach_nomembership_id, athlete_user_2029, athlete_user_2027);
   delete from public.recruiting_programs where id = program_id;
 end $$;
