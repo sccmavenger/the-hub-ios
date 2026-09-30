@@ -20,3 +20,7 @@ DerivedData/
 .AppleDouble
 .LSOverride
 supabase/.temp/
+.secrets/
+
+# App Store screenshot captures (regenerated on demand)
+.screenshots/

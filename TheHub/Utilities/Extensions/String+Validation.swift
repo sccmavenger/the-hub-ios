@@ -6,8 +6,9 @@ extension String {
         return self.wholeMatch(of: regex) != nil
     }
 
+    // Must match the Supabase auth setting (password_min_length = 8)
     var isValidPassword: Bool {
-        count >= 6
+        count >= 8
     }
 
     /// Strips whitespace and newlines from both ends.

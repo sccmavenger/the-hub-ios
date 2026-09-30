@@ -8,6 +8,25 @@ Status key: `[ ]` open · `[~]` decided, not built · `[x]` resolved
 
 ---
 
+## Resolution log (2026-09-11, approved by Danny)
+
+- **A1 `[x]`** — iOS is a clean replacement; keeps its own Supabase project. Web project/data will not be migrated.
+- **A2 `[x]`** — Edge functions `delete-account` and `record-profile-view` built and deployed; more (guardian invites, admin ops, approved-coach list) come with Phases 3–5.
+- **A3 `[x]`** — Private bucket + 365-day signed URLs, coach/admin read policies (web parity).
+- **B1 `[~]` decided: keep our table names** (`user_profiles`, `athlete_profile_views`) — no renames; future ports translate names.
+- **B2/B3/B4/B5 `[x]`** — via `supabase/002-parity.sql`: safety tables, all triggers, contacts/pipeline/views RLS tightening, invite expiry default. Exception per B1 decision: role assignment stays client-side (no `handle_new_user` role trigger); accepted as looser than web.
+- **C1 `[x]`** — Web 14-item/110 completeness formula + tones adopted.
+- **C2 `[x]`** — Editor: web validation ranges, 8-video cap, photo captions, bio counter, guardian-consent capture + under-18 publish rule, ZIP→lat/lng geocoding (zippopotam.us), 25 MB/dimension-capped image pipeline. Skipped: public-link display (no web frontend exists in the replacement).
+- **C3 `[x]`** — Colleges: bundled 1,351-program directory with typeahead (name/common/acronym/state), ESPN/Clearbit crests with initials fallback, duplicate check, NCAA contact-windows compliance card.
+- **C4 `[x]`** — Dashboard: all-time views tile, managed-athletes support + switcher, create/link empty states (invite redemption itself is Phase 3).
+- **C5 `[x]`** — Sign-up: athlete DOB required, under-13 blocked with "sign up as a parent instead"; DOB saved to the athlete row. Kept client-side role inserts per B1 decision.
+- **D3 `[~]` (2026-09-12)** — Athlete-side safety shipped: block/unblock + report from message threads (7 web reasons, 2000-char details), blocked-people list in Account, admin notify trigger (`005-report-notify.sql`). Remaining: coach-side report/block, per-message flags, admin reports queue (D11).
+- **D4 `[x]` (2026-09-12)** — Account screen: email + roles, blocked list, type-DELETE-to-confirm account deletion via the delete-account edge function.
+- **D5 `[x]` (2026-09-12)** — Insights: 4 stat tiles, 8-week chart, unique programs (30d), completeness card, role-labeled recent viewers. Reachable from More → Insights and the dashboard views tile.
+- **Product call (Danny, 2026-09-12):** MAYB toggle removed from the schedule editor; `is_mayb` stays in the DB for coach-side filters.
+
+---
+
 ## A. Strategic decisions (discuss first — everything else depends on these)
 
 ### A1. `[ ]` Two separate Supabase projects
@@ -172,6 +191,11 @@ Stage chips w/ counts; stage select per card (watching/evaluating/contacted/
 offered/passed); tags ≤10; private notes ≤2000; CSV export of filtered rows.
 
 ### D10. `[ ]` Coach inbox (Phase 4) — mirror of D1 from coach side.
+
+> **Testing mode (2026-09-11):** coach sign-ups are auto-approved by the
+> `trg_auto_approve_coach` trigger (`supabase/003-testing-auto-approve.sql`).
+> **Must be dropped before launch**, when admin review lands (D11) with
+> **Resend** for approval notification emails (Danny's call, 2026-09-11).
 
 ### D11. `[ ]` Admin (Phase 5)
 Stats (6 head-counts); users list w/ role toggles + delete (can't self-delete /

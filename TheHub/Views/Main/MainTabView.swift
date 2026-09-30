@@ -10,11 +10,15 @@ struct MainTabView: View {
             case .athlete, .parent:
                 AthleteTabView()
             case .coach:
-                CoachTabView()
+                WebToolsTabView()
             case .admin:
                 AdminTabView()
             case nil:
-                PendingApprovalView()
+                if authViewModel.roleLoadFailed {
+                    RoleLoadErrorView()
+                } else {
+                    PendingApprovalView()
+                }
             }
         }
     }
@@ -39,7 +43,7 @@ private struct AthleteTabView: View {
                 .tabItem { Label("Colleges", systemImage: "building.2") }
                 .tag(2)
 
-            Text("Messages — coming soon")
+            MessagesTabView()
                 .tabItem { Label("Messages", systemImage: "message") }
                 .tag(3)
 
@@ -47,52 +51,105 @@ private struct AthleteTabView: View {
                 .tabItem { Label("More", systemImage: "ellipsis") }
                 .tag(4)
         }
-        .tint(Color.hubGold)
+        .tint(Color.hubPrimary)
     }
 }
 
-// MARK: - Coach tabs
+// MARK: - Coach / admin accounts
 
-private struct CoachTabView: View {
+/// The iOS app is the athlete & family experience; coach and admin tools live
+/// on the web. Coach/admin sign-ins get this signpost plus the shared More
+/// screen (Account, sign out) instead of placeholder tabs.
+private struct WebToolsTabView: View {
     var body: some View {
         TabView {
-            Text("Athlete Directory — coming soon")
-                .tabItem { Label("Athletes", systemImage: "person.3") }
-
-            Text("Games Near Me — coming soon")
-                .tabItem { Label("Games", systemImage: "calendar") }
-
-            Text("Pipeline — coming soon")
-                .tabItem { Label("Pipeline", systemImage: "chart.bar") }
-
-            Text("Messages — coming soon")
-                .tabItem { Label("Messages", systemImage: "message") }
+            ZStack {
+                Color.hubBackground.ignoresSafeArea()
+                VStack(spacing: 20) {
+                    Image(systemName: "desktopcomputer")
+                        .font(.system(size: 64))
+                        .foregroundStyle(Color.hubPrimary)
+                    Text("Your Tools Are on the Web")
+                        .font(.title2.bold())
+                        .foregroundStyle(.white)
+                    Text("The Hub app is built for athletes and their families. Coach and admin tools — athlete search, pipeline, messaging, and approvals — are available on The Hub for web.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.hubTextSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                }
+            }
+            .tabItem { Label("Overview", systemImage: "house") }
 
             MoreView()
                 .tabItem { Label("More", systemImage: "ellipsis") }
         }
-        .tint(Color.hubGold)
+        .tint(Color.hubPrimary)
     }
 }
 
 // MARK: - Admin tabs
 
+/// Staff console. Full user/report/coach-approval management lives in the web
+/// admin portal; this surfaces the controls that have to be reachable from a
+/// phone — today the college-logo kill switch, which may need flipping fast.
 private struct AdminTabView: View {
     var body: some View {
         TabView {
-            Text("Admin Dashboard — coming soon")
-                .tabItem { Label("Dashboard", systemImage: "gauge") }
-
-            Text("Users — coming soon")
-                .tabItem { Label("Users", systemImage: "person.2") }
-
-            Text("Coach Requests — coming soon")
-                .tabItem { Label("Requests", systemImage: "checkmark.circle") }
+            NavigationStack {
+                AdminSettingsView()
+            }
+            .tabItem { Label("Admin", systemImage: "slider.horizontal.3") }
 
             MoreView()
                 .tabItem { Label("More", systemImage: "ellipsis") }
         }
-        .tint(Color.hubGold)
+        .tint(Color.hubPrimary)
+    }
+}
+
+// MARK: - Role load failure
+
+private struct RoleLoadErrorView: View {
+    @Environment(AuthViewModel.self) private var authViewModel
+    @State private var isRetrying = false
+
+    var body: some View {
+        ZStack {
+            Color.hubBackground.ignoresSafeArea()
+            VStack(spacing: 20) {
+                Image(systemName: "wifi.exclamationmark")
+                    .font(.system(size: 64))
+                    .foregroundStyle(Color.hubWarning)
+                Text("Couldn't Load Your Account")
+                    .font(.title2.bold())
+                    .foregroundStyle(.white)
+                Text("Check your connection and try again.")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.hubTextSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                Button {
+                    Task {
+                        isRetrying = true
+                        await authViewModel.refreshRoles()
+                        isRetrying = false
+                    }
+                } label: {
+                    if isRetrying {
+                        ProgressView().tint(Color.hubPrimary)
+                    } else {
+                        Text("Try Again").bold()
+                    }
+                }
+                .foregroundStyle(Color.hubPrimary)
+                Button("Sign Out") {
+                    Task { await authViewModel.signOut() }
+                }
+                .font(.subheadline)
+                .foregroundStyle(Color.hubTextSecondary)
+            }
+        }
     }
 }
 
@@ -107,7 +164,7 @@ private struct PendingApprovalView: View {
             VStack(spacing: 20) {
                 Image(systemName: "clock.badge")
                     .font(.system(size: 64))
-                    .foregroundStyle(Color.hubGold)
+                    .foregroundStyle(Color.hubPrimary)
                 Text("Account Pending Approval")
                     .font(.title2.bold())
                     .foregroundStyle(.white)
@@ -119,7 +176,7 @@ private struct PendingApprovalView: View {
                 Button("Sign Out") {
                     Task { await authViewModel.signOut() }
                 }
-                .foregroundStyle(Color.hubGold)
+                .foregroundStyle(Color.hubPrimary)
                 .padding(.top, 8)
             }
         }
@@ -137,11 +194,24 @@ struct MoreView: View {
                 Color.hubBackground.ignoresSafeArea()
                 List {
                     Section {
-                        NavigationLink("Insights") {
-                            Text("Insights — coming soon")
+                        // Both are tied to an athlete profile, so they'd only
+                        // show empty states for a coach or staff account.
+                        if authViewModel.currentRoles.contains(.athlete)
+                            || authViewModel.currentRoles.contains(.parent) {
+                            NavigationLink("Insights") {
+                                InsightsRootView()
+                            }
+                            NavigationLink("NCAA Journey") {
+                                NCAAJourneyRootView()
+                            }
                         }
                         NavigationLink("Account") {
-                            AccountPlaceholderView()
+                            AccountView()
+                        }
+                        if authViewModel.currentRoles.contains(.admin) {
+                            NavigationLink("Admin Settings") {
+                                AdminSettingsView()
+                            }
                         }
                     }
                     .listRowBackground(Color.hubSurface)
@@ -163,19 +233,3 @@ struct MoreView: View {
     }
 }
 
-private struct AccountPlaceholderView: View {
-    @Environment(AuthViewModel.self) private var authViewModel
-
-    var body: some View {
-        ZStack {
-            Color.hubBackground.ignoresSafeArea()
-            VStack(spacing: 16) {
-                Text(authViewModel.session?.user.email ?? "")
-                    .foregroundStyle(Color.hubTextSecondary)
-                Text("Account settings — coming soon")
-                    .foregroundStyle(.white)
-            }
-        }
-        .navigationTitle("Account")
-    }
-}

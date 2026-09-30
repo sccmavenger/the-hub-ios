@@ -18,6 +18,50 @@ final class AthleteService {
             .value
     }
 
+    /// Athletes the user manages: owned rows plus guardian-linked ones (web parity).
+    func fetchManagedAthletes(userId: String) async throws -> [Athlete] {
+        let owned: [Athlete] = try await supabase
+            .from("athletes")
+            .select()
+            .eq("user_id", value: userId)
+            .order("created_at")
+            .execute()
+            .value
+
+        let guardianLinks: [AthleteGuardian] = try await supabase
+            .from("athlete_guardians")
+            .select()
+            .eq("user_id", value: userId)
+            .execute()
+            .value
+
+        let ownedIds = Set(owned.map(\.id))
+        let linkedIds = guardianLinks.map(\.athleteId).filter { !ownedIds.contains($0) }
+        guard !linkedIds.isEmpty else { return owned }
+
+        let linked: [Athlete] = try await supabase
+            .from("athletes")
+            .select()
+            .in("id", values: linkedIds)
+            .execute()
+            .value
+        return owned + linked
+    }
+
+    func createAthlete(userId: String, fullName: String) async throws -> Athlete {
+        try await supabase
+            .from("athletes")
+            .insert([
+                "user_id": AnyJSON.string(userId),
+                "full_name": .string(fullName),
+                "is_published": .bool(false)
+            ])
+            .select()
+            .single()
+            .execute()
+            .value
+    }
+
     func updateAthlete(_ athlete: Athlete) async throws {
         // Strip server-managed columns so the patch only touches editable fields
         var payload = try AnyJSON(athlete).objectValue ?? [:]
@@ -30,6 +74,31 @@ final class AthleteService {
             .from("athletes")
             .update(payload)
             .eq("id", value: athlete.id)
+            .execute()
+    }
+
+    // MARK: - NCAA readiness
+
+    func fetchNCAAReadiness(athleteId: String) async throws -> NCAAReadiness? {
+        let rows: [NCAAReadiness] = try await supabase
+            .from("athlete_ncaa_readiness")
+            .select()
+            .eq("athlete_id", value: athleteId)
+            .execute()
+            .value
+        return rows.first
+    }
+
+    func upsertNCAAReadiness(_ readiness: NCAAReadiness) async throws {
+        var payload = try AnyJSON(readiness).objectValue ?? [:]
+        payload.removeValue(forKey: "created_at")
+        payload.removeValue(forKey: "updated_at")
+        // encodeIfPresent drops a cleared GPA — write the null explicitly
+        payload["estimated_core_gpa"] = readiness.estimatedCoreGpa.map { AnyJSON.double($0) } ?? .null
+
+        try await supabase
+            .from("athlete_ncaa_readiness")
+            .upsert(payload, onConflict: "athlete_id")
             .execute()
     }
 
@@ -57,6 +126,14 @@ final class AthleteService {
             .single()
             .execute()
             .value
+    }
+
+    func updatePhotoCaption(id: String, caption: String?) async throws {
+        try await supabase
+            .from("athlete_photos")
+            .update(["caption": caption.map(AnyJSON.string) ?? .null])
+            .eq("id", value: id)
+            .execute()
     }
 
     func deletePhoto(id: String) async throws {
@@ -256,7 +333,7 @@ final class AthleteService {
                 data: data,
                 options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: true)
             )
-        return try publicURL(for: path)
+        return try await signedURL(for: path)
     }
 
     func uploadGalleryPhoto(data: Data, userId: String) async throws -> String {
@@ -268,25 +345,97 @@ final class AthleteService {
                 data: data,
                 options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: false)
             )
-        return try publicURL(for: path)
+        return try await signedURL(for: path)
     }
 
-    private func publicURL(for path: String) throws -> String {
-        try supabase.storage
+    // Bucket is private (web-app parity) — media is referenced via long-lived signed URLs
+    private func signedURL(for path: String) async throws -> String {
+        try await supabase.storage
             .from("athlete-media")
-            .getPublicURL(path: path)
+            .createSignedURL(path: path, expiresIn: 60 * 60 * 24 * 365)
             .absoluteString
+    }
+
+    // MARK: - Activity details
+
+    func fetchProfileViews(athleteId: String, limit: Int = 500) async throws -> [AthleteProfileView] {
+        try await supabase
+            .from("athlete_profile_views")
+            .select()
+            .eq("athlete_id", value: athleteId)
+            .order("created_at", ascending: false)
+            .limit(limit)
+            .execute()
+            .value
+    }
+
+    func fetchBookmarks(athleteId: String) async throws -> [BookmarkSummary] {
+        try await supabase
+            .rpc("bookmarks_for_athlete", params: ["_athlete_id": athleteId])
+            .execute()
+            .value
+    }
+
+    func fetchCoachNames(userIds: [String]) async throws -> [CoachDirectoryEntry] {
+        guard !userIds.isEmpty else { return [] }
+        return try await supabase
+            .rpc("coach_directory_names", params: ["_user_ids": userIds])
+            .execute()
+            .value
+    }
+
+    func fetchMessages(athleteId: String) async throws -> [Message] {
+        // Newest 1000, re-sorted oldest-first for display — an unbounded fetch
+        // would balloon for heavily recruited athletes.
+        let newest: [Message] = try await supabase
+            .from("messages")
+            .select()
+            .eq("athlete_id", value: athleteId)
+            .order("created_at", ascending: false)
+            .limit(1000)
+            .execute()
+            .value
+        return newest.reversed()
+    }
+
+    /// Athlete/guardian reply in an existing coach thread. RLS allows this via
+    /// can_manage_athlete; the blocked-pair trigger rejects it if either side
+    /// has blocked the other.
+    func sendMessage(athleteId: String, coachUserId: String, senderUserId: String, body: String) async throws -> Message {
+        try await supabase
+            .from("messages")
+            .insert([
+                "athlete_id": AnyJSON.string(athleteId),
+                "coach_user_id": .string(coachUserId),
+                "sender_user_id": .string(senderUserId),
+                "body": .string(body)
+            ])
+            .select()
+            .single()
+            .execute()
+            .value
+    }
+
+    /// Marks all inbound messages in one coach thread as read.
+    func markThreadRead(athleteId: String, coachUserId: String, currentUserId: String) async throws {
+        try await supabase
+            .from("messages")
+            .update(["read_at": AnyJSON.string(Date.now.toISO8601String())])
+            .eq("athlete_id", value: athleteId)
+            .eq("coach_user_id", value: coachUserId)
+            .neq("sender_user_id", value: currentUserId)
+            .is("read_at", value: nil)
+            .execute()
     }
 
     // MARK: - Activity counts
 
-    func profileViewCount(athleteId: String, days: Int = 90) async throws -> Int {
-        let since = Calendar.current.date(byAdding: .day, value: -days, to: .now) ?? .now
+    /// All-time count, matching the web dashboard tile.
+    func profileViewCount(athleteId: String) async throws -> Int {
         let response = try await supabase
             .from("athlete_profile_views")
             .select("*", head: true, count: .exact)
             .eq("athlete_id", value: athleteId)
-            .gte("created_at", value: since.toISO8601String())
             .execute()
         return response.count ?? 0
     }
@@ -315,7 +464,7 @@ final class AthleteService {
 
     func recordProfileView(athleteId: String) async throws {
         try await supabase.functions.invoke(
-            "recordProfileView",
+            "record-profile-view",
             options: .init(body: ["athleteId": athleteId])
         )
     }

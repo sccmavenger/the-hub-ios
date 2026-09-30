@@ -54,10 +54,11 @@ struct SignInView: View {
                         .padding(.horizontal, 24)
 
                         Button("Forgot password?") {
+                            authViewModel.errorMessage = nil
                             showResetPassword = true
                         }
                         .font(.subheadline)
-                        .foregroundStyle(Color.hubGold)
+                        .foregroundStyle(Color.hubPrimary)
 
                         Spacer(minLength: 24)
 
@@ -68,7 +69,7 @@ struct SignInView: View {
                                 Text("Don't have an account?")
                                     .foregroundStyle(Color.hubTextSecondary)
                                 Text("Sign Up")
-                                    .foregroundStyle(Color.hubGold)
+                                    .foregroundStyle(Color.hubPrimary)
                                     .fontWeight(.semibold)
                             }
                             .font(.subheadline)
@@ -77,6 +78,7 @@ struct SignInView: View {
                         Spacer().frame(height: 24)
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
             .navigationDestination(isPresented: $showSignUp) {
                 SignUpView()

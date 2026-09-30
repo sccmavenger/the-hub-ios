@@ -7,6 +7,7 @@ struct HubTextField: View {
     var keyboardType: UIKeyboardType = .default
     var textContentType: UITextContentType? = nil
     var autocapitalization: TextInputAutocapitalization = .never
+    var maxLength: Int? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -29,6 +30,11 @@ struct HubTextField: View {
                     RoundedRectangle(cornerRadius: 10)
                         .stroke(Color.hubBorder, lineWidth: 1)
                 )
+                .onChange(of: text) {
+                    if let maxLength, text.count > maxLength {
+                        text = String(text.prefix(maxLength))
+                    }
+                }
         }
     }
 }
@@ -103,7 +109,7 @@ struct HubPrimaryButton: View {
             Group {
                 if isLoading {
                     ProgressView()
-                        .tint(.black)
+                        .tint(.white)
                 } else {
                     Text(label)
                         .font(.headline)
@@ -112,8 +118,8 @@ struct HubPrimaryButton: View {
             .frame(maxWidth: .infinity)
             .frame(height: 50)
         }
-        .background(Color.hubGold.opacity(isDisabled ? 0.5 : 1))
-        .foregroundStyle(.black)
+        .background(Color.hubPrimary.opacity(isDisabled ? 0.5 : 1))
+        .foregroundStyle(.white)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .disabled(isLoading || isDisabled)
     }

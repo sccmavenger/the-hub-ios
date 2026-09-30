@@ -18,7 +18,7 @@ struct ResetPasswordView: View {
 
                     Image(systemName: "lock.rotation")
                         .font(.system(size: 56))
-                        .foregroundStyle(Color.hubGold)
+                        .foregroundStyle(Color.hubPrimary)
 
                     VStack(spacing: 8) {
                         Text("Reset Password")
@@ -44,10 +44,13 @@ struct ResetPasswordView: View {
             .navigationTitle("Forgot Password")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
+            // errorMessage is shared with the sign-in screen; without this a
+            // stale "Invalid login credentials" greets the user here.
+            .onAppear { authViewModel.errorMessage = nil }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
-                        .foregroundStyle(Color.hubGold)
+                        .foregroundStyle(Color.hubPrimary)
                 }
             }
         }

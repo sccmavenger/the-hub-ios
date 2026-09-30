@@ -67,4 +67,13 @@ enum SportGender: String, Codable, CaseIterable {
         case .womens: "Women's"
         }
     }
+
+    /// Athlete-facing label — the field picks which basketball program /
+    /// NCAA recruiting calendar applies, so it reads "Boys / Girls" (web parity).
+    var basketballLabel: String {
+        switch self {
+        case .mens: "Boys"
+        case .womens: "Girls"
+        }
+    }
 }
