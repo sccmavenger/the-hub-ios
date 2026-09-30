@@ -1,6 +1,6 @@
 import Foundation
 
-struct AthleteVideo: Codable, Identifiable {
+nonisolated struct AthleteVideo: Codable, Identifiable, Sendable {
     let id: String
     let athleteId: String
     let url: String

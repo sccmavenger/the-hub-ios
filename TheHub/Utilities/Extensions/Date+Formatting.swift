@@ -1,11 +1,15 @@
 import Foundation
 
-extension String {
+// nonisolated: pure formatting used by nonisolated models (RecruitingDecision,
+// CoachRequest…) that are decoded off the main actor. The cached formatters
+// are read-only after creation; ISO8601DateFormatter is documented thread-safe,
+// hence nonisolated(unsafe) rather than an actor hop per call.
+nonisolated extension String {
     // Timestamps parse as instants (UTC) and display in local time.
     // Date-ONLY strings ("2026-09-18" — game dates, DOB) parse as LOCAL
     // midnight: parsing them as UTC made every date render a day early in
     // US timezones (Date.asDateOnlyString formats in local to match).
-    private static let timestampFormatters: [ISO8601DateFormatter] = [
+    private nonisolated(unsafe) static let timestampFormatters: [ISO8601DateFormatter] = [
         {
             let f = ISO8601DateFormatter()
             f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -18,7 +22,7 @@ extension String {
         }()
     ]
 
-    private static let dateOnlyFormatter: ISO8601DateFormatter = {
+    private nonisolated(unsafe) static let dateOnlyFormatter: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withFullDate]
         f.timeZone = .current
@@ -42,7 +46,7 @@ extension String {
     }
 }
 
-extension Date {
+nonisolated extension Date {
     func toISO8601String() -> String {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

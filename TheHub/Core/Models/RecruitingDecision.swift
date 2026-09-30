@@ -5,7 +5,7 @@ import Supabase
 /// are the `action_type` strings stored in `recruiting_rules`. Actions are
 /// modeled separately on purpose: an opening for one (e.g. electronic
 /// messages) never implies an opening for another (calls, visits, contact).
-enum RecruitingAction: String, Codable, CaseIterable, Sendable {
+nonisolated enum RecruitingAction: String, Codable, CaseIterable, Sendable {
     case athleteSendIntroMessage = "athlete_send_intro_message"
     case coachSendRecruitingElectronicCorrespondence = "coach_send_recruiting_electronic_correspondence"
     case coachSendNonrecruitingResponse = "coach_send_nonrecruiting_response"
@@ -18,14 +18,14 @@ enum RecruitingAction: String, Codable, CaseIterable, Sendable {
     case institutionSendCampLogistics = "institution_send_camp_logistics"
 }
 
-enum RecruitingDecisionStatus: String, Codable, Sendable {
+nonisolated enum RecruitingDecisionStatus: String, Codable, Sendable {
     case permitted
     case prohibited
     case permittedWithRestrictions = "permitted_with_restrictions"
     case needsReview = "needs_review"
 }
 
-enum EnforcementLevel: String, Codable, Sendable {
+nonisolated enum EnforcementLevel: String, Codable, Sendable {
     case hardBlock = "hard_block"
     case warning
     case informational
@@ -38,7 +38,7 @@ enum EnforcementLevel: String, Codable, Sendable {
 /// renders this. Timestamps stay as the server's strings and are parsed on
 /// read so an unexpected format degrades to "no date" rather than a decode
 /// failure.
-struct RecruitingDecision: Codable, Equatable, Sendable {
+nonisolated struct RecruitingDecision: Codable, Equatable, Sendable {
     let status: RecruitingDecisionStatus
     let action: String
     let actor: String?
@@ -142,7 +142,7 @@ struct RecruitingDecision: Codable, Equatable, Sendable {
 
 /// UI load state for one decision. `.unavailable` covers network failure,
 /// decode failure, and the engine flag being off — never a guessed outcome.
-enum RecruitingStatusLoad: Equatable, Sendable {
+nonisolated enum RecruitingStatusLoad: Equatable, Sendable {
     case loading
     case loaded(RecruitingDecision)
     case unavailable

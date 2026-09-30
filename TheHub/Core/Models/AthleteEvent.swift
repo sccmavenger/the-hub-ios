@@ -1,6 +1,6 @@
 import Foundation
 
-struct AthleteEvent: Codable, Identifiable {
+nonisolated struct AthleteEvent: Codable, Identifiable, Sendable {
     let id: String
     let athleteId: String
     var eventDate: String

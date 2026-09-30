@@ -1,6 +1,6 @@
 import Foundation
 
-struct Message: Codable, Identifiable {
+nonisolated struct Message: Codable, Identifiable, Sendable {
     let id: String
     let athleteId: String
     let coachUserId: String
