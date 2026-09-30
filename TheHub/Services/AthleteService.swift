@@ -401,19 +401,31 @@ final class AthleteService {
     /// Athlete/guardian reply in an existing coach thread. RLS allows this via
     /// can_manage_athlete; the blocked-pair trigger rejects it if either side
     /// has blocked the other.
+    /// Inserts a message. The database is the enforcement boundary: blocked
+    /// pairs, unpublished athletes, and — for coach senders — the Recruiting
+    /// Rules Engine (supabase/013) can all reject the row. A recruiting
+    /// rejection surfaces as `RecruitingRulesError.actionProhibited` with the
+    /// server's reason; athlete/guardian sends are never subject to it.
     func sendMessage(athleteId: String, coachUserId: String, senderUserId: String, body: String) async throws -> Message {
-        try await supabase
-            .from("messages")
-            .insert([
-                "athlete_id": AnyJSON.string(athleteId),
-                "coach_user_id": .string(coachUserId),
-                "sender_user_id": .string(senderUserId),
-                "body": .string(body)
-            ])
-            .select()
-            .single()
-            .execute()
-            .value
+        do {
+            return try await supabase
+                .from("messages")
+                .insert([
+                    "athlete_id": AnyJSON.string(athleteId),
+                    "coach_user_id": .string(coachUserId),
+                    "sender_user_id": .string(senderUserId),
+                    "body": .string(body)
+                ])
+                .select()
+                .single()
+                .execute()
+                .value
+        } catch {
+            if let recruiting = RecruitingRulesError.fromServerError(error) {
+                throw recruiting
+            }
+            throw error
+        }
     }
 
     /// Marks all inbound messages in one coach thread as read.

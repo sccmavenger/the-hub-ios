@@ -89,6 +89,8 @@ begin
   assert d ->> 'source_reference' like 'Bylaw 13.4.1.5%', 'A source ref: ' || (d ->> 'source_reference');
   -- June 15 2027 00:00 Indianapolis (EDT, UTC-4) = 04:00Z
   assert d ->> 'next_permitted_at' = '2027-06-15T04:00:00Z', 'A next: ' || (d ->> 'next_permitted_at');
+  assert d ->> 'next_permitted_on' = '2027-06-15', 'A next date: ' || (d ->> 'next_permitted_on');
+  assert d ->> 'rule_time_zone' = 'America/Indiana/Indianapolis', 'A tz';
   assert (d ->> 'last_verified_at') is not null, 'A last_verified_at missing';
   assert d ->> 'action' = 'coach_send_recruiting_electronic_correspondence', 'A action';
 
@@ -124,6 +126,7 @@ begin
   assert d ->> 'rule_key' = 'ncaa.d1.basketball.womens.coach.electronic_correspondence.nontraditional', 'E1 rule: ' || (d ->> 'rule_key');
   -- day after = Nov 21 00:00 Indianapolis (EST, UTC-5) = 05:00Z; no June-1 guess
   assert d ->> 'next_permitted_at' = '2027-11-21T05:00:00Z', 'E1 next: ' || (d ->> 'next_permitted_at');
+  assert d ->> 'next_permitted_on' = '2027-11-21', 'E1 next date: ' || (d ->> 'next_permitted_on');
   d := public.recruiting_evaluate_core(
     womens || '{"athlete_academic_calendar_type": "nontraditional", "athlete_sophomore_completed_on": "2027-11-20"}'::jsonb,
     '2027-11-21 00:00:00 America/Indiana/Indianapolis');

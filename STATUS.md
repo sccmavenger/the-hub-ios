@@ -126,8 +126,8 @@ Sections: Basic · Physical · Academics · Social · Bio · Profile Photo · Ga
 - `dguilloryjr@msn.com` / `P@ssw0rd` — role: **admin only** (the athlete role
   and the empty "Danny Test" athlete row were removed 2026-09-23 at Danny's
   request — admin accounts should not carry athlete profiles).
-- Signing in lands on the **Admin** tab (Admin Settings + More). Use the
-  reviewer athlete account below for athlete testing.
+- Signing in lands on the **Admin** tab (Admin Settings + More). For athlete
+  testing use `dguilloryjr@gmail.com` or sign up a throwaway account.
 - First admin had to be bootstrapped with SQL: `user_roles` only allows
   self-assigning athlete/parent, and granting `admin` requires an existing
   admin. To add more admins later, an existing admin can insert the row, or
@@ -138,52 +138,45 @@ Sections: Basic · Physical · Academics · Social · Bio · Profile Photo · Ga
   data (including minors' contact info), manage roles, and flip production
   feature flags.
 
-## Reviewer Test Accounts (already in Supabase DB)
-- Athlete: `apple.review.athlete@summithoops.example` / `ReviewAthlete2026!`
-  ⚠️ This account was **accidentally deleted in-app on 2026-09-23** (the
-  delete-account flow was exercised while signed into it) and **rebuilt from
-  scratch the same day** with identical credentials — Apple's App Review notes
-  still match. New user id `646144c2-…`; profile is Jalen Brooks, published,
-  with regenerated photos, schedule, colleges, coach messages, and NCAA data.
-  Do not use this account to demo account deletion — use a throwaway signup.
-- Coach: `apple.review.coach@summithoops.example` / `ReviewCoach2026!`
+## Demo / Reviewer Accounts — NONE (purged 2026-09-29)
 
-## Marketing / Demo Athlete Accounts (seeded 2026-09-23)
-Five fully populated, published athlete profiles for demos, screenshots, and
-marketing. All have: profile photo + 5 captioned gallery images (generated
-sports-card graphics in Supabase storage, 1-year signed URLs), bio, academics,
-physicals, socials, hometown+coords, guardian consent, contact card, 5
-schedule events (Oct–Dec 2026), 4–6 target colleges, coach messages, NCAA
-readiness data, and seeded profile views/saves from the demo coach accounts.
-Emails are intentionally non-routable (`@summithoops.example`) — password
-reset is impossible, so keep these passwords safe.
+All 12 demo accounts (`*@summithoops.example`: the Apple review athlete +
+coach, the 4 marketing athletes, and the 6 seeded coaches) were **fully purged
+on 2026-09-29** at Danny's request after App Store approval — auth logins,
+profiles, photos in storage, messages, views, saves, and every dependent row.
+Verified zero leftovers. Reason: published fictitious athletes would appear
+in real coaches' searches once the app is live.
 
-| Athlete | Email | Password | Class / Position |
-|---|---|---|---|
-| Jalen Brooks | `apple.review.athlete@summithoops.example` | `ReviewAthlete2026!` | 2027 SG (mens) — also the Apple review account |
-| Darius Cole | `demo.darius.cole@summithoops.example` | `DemoDarius2026!` | 2027 PG (mens) |
-| Maya Thompson | `demo.maya.thompson@summithoops.example` | `DemoMaya2026!` | 2027 SG (womens) |
-| Elijah Reed | `demo.elijah.reed@summithoops.example` | `DemoElijah2026!` | 2028 PF (mens) |
-| Sofia Ramirez | `demo.sofia.ramirez@summithoops.example` | `DemoSofia2026!` | 2027 SF (womens) |
+⚠️ **Before the next App Review submission, a demo athlete account must be
+created** (sign-in is required, so Apple needs working credentials) and
+entered in App Store Connect → App Review Information. Ask Claude to build
+one; the seeding approach is documented in
+docs/SUBMISSION-READINESS.md §2g. The App Review demo-account fields were
+cleared on 2026-09-29 so they don't point at a dead login.
 
-## Demo Coach Accounts (rotated 2026-09-18 — see docs/SUBMISSION-READINESS.md)
-Emails moved from public mailinator.com inboxes to non-routable
-`@summithoops.example` addresses and passwords scrambled (the old
-`DemoCoach2026!` password was committed to git history, and anyone could
-read a mailinator inbox and password-reset their way into an approved coach
-account). Their seeded data (messages, views, saves) is unchanged. These
-accounts are no longer sign-in-able; to use one, reset its password via SQL.
-- `coach.boudreaux.lsu@summithoops.example` — Marcus Boudreaux, LSU
-- `coach.jackson.uh@summithoops.example` — Darnell Jackson, Houston
-- `coach.landry.latech@summithoops.example` — Louisiana Tech
-- `coach.rizzo.slu@summithoops.example` — Southeastern Louisiana
-- `coach.carter.mostate@summithoops.example` — Missouri State
-- `coach.whitfield.ku@summithoops.example` — Kansas
-- Athlete: `ctguillory@mailinator.com` (Danny's test athlete — left untouched
-  deliberately; NOTE: mailinator inboxes are public, so consider changing this
-  account's email before launch)
+Remaining accounts (as of 2026-09-30): **only `dguilloryjr@msn.com` (admin)**.
+`dguilloryjr@gmail.com` and `ctguillory@mailinator.com` were purged
+2026-09-30 at Danny's request; the `athlete-media` bucket is empty.
 
----
+## Recruiting Rules Engine (added 2026-09-30)
+
+Recruiting rule authority moved out of the app into Supabase. Spec:
+`docs/RECRUITING-RULES-ENGINE-SPEC.md`; operations: `docs/RECRUITING-RULE-MAINTENANCE.md`.
+
+- Migrations 010–013 applied to prod. Seven NCAA D1 basketball rules seeded from the
+  2026-27 D1 Manual (LSDBi 90008). **The spec's bylaw numbers were wrong** — basketball is
+  13.4.1.5 (men's, June 15) / 13.4.1.6 (women's, June 1), not 13.4.1.3/4.
+- One deterministic SQL evaluator (`evaluate_recruiting_action`) serves iOS, web, and the
+  `messages` BEFORE INSERT trigger. Swift only deserializes `RecruitingDecision`.
+- Flags in `app_settings`: `recruiting_rules_engine_enabled` = **true** (Stage A, display),
+  `recruiting_rules_enforcement_enabled` = **false** (Stage B hard-block; needs verified
+  coach→program rows, which wait for the coach-experience spec).
+- D2/D3/NAIA/NJCAA have no sourced rule → `needs_review`. D3/NAIA/JUCO rows on the Colleges
+  card keep their legacy orientation note by decision (TECH-DEBT #21).
+- Tests: `supabase/tests/*.test.sql` (3 suites, run via `scripts/db-query.sh`) and
+  `TheHubTests/RecruitingRulesTests.swift` (13 tests).
+- Terms §6 rewritten in `docs/legal/terms-of-service.md` + `LegalView.swift`
+  (last updated 2026-09-30). **Website `/terms` on Lovable still needs the same text.**
 
 ## Tech Decisions Made
 - **iOS 17+ only** — uses `@Observable` macro, no Combine

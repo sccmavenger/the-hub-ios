@@ -32,6 +32,12 @@ struct Athlete: Codable, Identifiable {
     var guardianConsentName: String?
     let createdAt: String
     let updatedAt: String
+    /// `traditional_us` (default), `nontraditional`, or `unknown`. Feeds the
+    /// Recruiting Rules Engine's calendar-dependent bylaws (supabase/010).
+    /// No editing UI in this phase; the server default applies.
+    var academicCalendarType: String? = nil
+    /// Required only when `academicCalendarType` is `nontraditional`.
+    var sophomoreCompletedOn: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -65,6 +71,8 @@ struct Athlete: Codable, Identifiable {
         case guardianConsentName = "guardian_consent_name"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+        case academicCalendarType = "academic_calendar_type"
+        case sophomoreCompletedOn = "sophomore_completed_on"
     }
 
     var heightDisplay: String? {

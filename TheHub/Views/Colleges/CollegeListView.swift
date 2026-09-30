@@ -9,6 +9,11 @@ struct CollegeListView: View {
     @State private var editingInterest: AthleteCollegeInterest?
     @State private var collegeToDelete: AthleteCollegeInterest?
 
+    // Recruiting Rules Engine decisions for the status card (backend-evaluated).
+    @State private var d1CoachStatus: RecruitingStatusLoad = .loading
+    @State private var d2CoachStatus: RecruitingStatusLoad = .loading
+    @State private var outreachStatus: RecruitingStatusLoad = .loading
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -87,11 +92,36 @@ struct CollegeListView: View {
             }
         }
         .task { await load() }
+        .task(id: viewModel.athlete?.id) { await loadRecruitingStatus() }
     }
 
     private func load() async {
         guard let userId = authViewModel.session?.user.id.uuidString else { return }
         await viewModel.load(userId: userId)
+    }
+
+    private func loadRecruitingStatus() async {
+        guard let athleteId = viewModel.athlete?.id else { return }
+        d1CoachStatus = .loading
+        d2CoachStatus = .loading
+        outreachStatus = .loading
+        let service = RecruitingRulesService.shared
+        async let d1 = service.load(
+            athleteId: athleteId, action: .coachSendRecruitingElectronicCorrespondence,
+            governingBody: "NCAA", division: "D1"
+        )
+        async let d2 = service.load(
+            athleteId: athleteId, action: .coachSendRecruitingElectronicCorrespondence,
+            governingBody: "NCAA", division: "D2"
+        )
+        async let outreach = service.load(
+            athleteId: athleteId, action: .athleteSendIntroMessage,
+            governingBody: "NCAA", division: "D1"
+        )
+        let (d1Result, d2Result, outreachResult) = await (d1, d2, outreach)
+        d1CoachStatus = d1Result
+        d2CoachStatus = d2Result
+        outreachStatus = outreachResult
     }
 
     private var athleteSwitcher: some View {
@@ -143,45 +173,35 @@ struct CollegeListView: View {
         .refreshable { await load() }
     }
 
-    // MARK: - NCAA compliance card (web parity)
+    // MARK: - Recruiting status card (Recruiting Rules Engine)
 
+    /// Action-specific status per division from the backend evaluator
+    /// (spec §19). D1/D2 rows are engine-backed (D2 has no sourced rule yet
+    /// and honestly reads "Needs review"); D3/NAIA/JUCO keep the legacy
+    /// orientation note pending the coach-experience work. Per-program status
+    /// arrives with verified program data in that later phase.
     private var complianceCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("When can coaches contact you?")
+            Text("Recruiting status")
                 .font(.headline)
                 .foregroundStyle(.white)
 
-            Text(Compliance.athleteOutreachNote)
-                .font(.subheadline)
-                .foregroundStyle(Color.hubPrimary)
+            AthleteOutreachStatusView(load: outreachStatus)
 
-            let gender = viewModel.athlete?.sportGender.flatMap(SportGender.init(rawValue:))
-            let windows = Compliance.contactWindows(gradYear: viewModel.athlete?.gradYear, gender: gender)
+            Divider().background(Color.hubBorder)
 
-            VStack(spacing: 8) {
-                ForEach(windows) { window in
-                    HStack(alignment: .top, spacing: 10) {
-                        Text(window.division)
-                            .font(.caption.bold())
-                            .foregroundStyle(.black)
-                            .frame(width: 44)
-                            .padding(.vertical, 3)
-                            .background(window.open ? Color.hubSuccess : Color.hubWarning)
-                            .clipShape(Capsule())
+            Text("Coach recruiting messages")
+                .font(.subheadline.bold())
+                .foregroundStyle(.white)
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(window.open ? "Contact allowed" : "Not yet")
-                                .font(.caption.bold())
-                                .foregroundStyle(window.open ? Color.hubSuccess : Color.hubWarning)
-                            Text(window.summary)
-                                .font(.caption)
-                                .foregroundStyle(Color.hubTextSecondary)
-                        }
-                        Spacer(minLength: 0)
-                    }
-                }
+            RecruitingStatusView(title: "NCAA D1", load: d1CoachStatus)
+            RecruitingStatusView(title: "NCAA D2", load: d2CoachStatus)
+
+            ForEach(Compliance.divisionsWithoutEngineRules, id: \.self) { division in
+                legacyDivisionRow(division)
             }
 
+            let gender = viewModel.athlete?.sportGender.flatMap(SportGender.init(rawValue:))
             if let gender {
                 let calendar = Compliance.d1Calendar(gender: gender)
                 Link(calendar.label, destination: calendar.url)
@@ -197,7 +217,11 @@ struct CollegeListView: View {
                 .font(.caption)
                 .foregroundStyle(Color.hubBlue)
 
-            Text(Compliance.disclaimer(gender: gender))
+            Text(Compliance.actionSpecificNote)
+                .font(.caption2)
+                .foregroundStyle(Color.hubTextSecondary)
+
+            Text(Compliance.rulesEngineDisclaimer)
                 .font(.caption2)
                 .foregroundStyle(Color.hubTextSecondary)
 
@@ -212,6 +236,28 @@ struct CollegeListView: View {
         .padding(16)
         .background(Color.hubSurface.opacity(0.5))
         .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// Legacy orientation row for divisions the engine has no sourced rule
+    /// for. Kept verbatim by product decision (2026-09-30) until the
+    /// coach-experience spec; tracked in docs/TECH-DEBT.md.
+    private func legacyDivisionRow(_ division: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("NCAA \(division)".replacingOccurrences(of: "NCAA NAIA", with: "NAIA").replacingOccurrences(of: "NCAA JUCO", with: "JUCO / NJCAA"))
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.white)
+                Spacer(minLength: 8)
+                RecruitingStatusBadge(label: "Contact allowed", color: Color.hubSuccess)
+            }
+            if let note = Compliance.divisionNote(division) {
+                Text(note)
+                    .font(.caption)
+                    .foregroundStyle(Color.hubTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Rows

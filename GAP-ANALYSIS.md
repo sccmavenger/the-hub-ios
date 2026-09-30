@@ -117,8 +117,9 @@ gpa 10, size 10, contact 10, gallery 5). Decide which is canonical.
 - Searchable database of 1,300+ programs with typeahead (name/acronym/state),
   auto-fills division+state (web `colleges-data.ts` — portable to Swift or an API)
 - College crest/logo (web has `/api/public/college-logo` with ESPN/Clearbit fallbacks)
-- NCAA compliance card: contact windows per division (D1/D2 open June 15 of gradYear−2),
-  gendered calendar links, outreach note
+- Recruiting status card: action-specific decisions from the backend Recruiting
+  Rules Engine (supabase/010–013; superseded the hard-coded June 15 windows
+  2026-09-30), gendered calendar links, outreach note
 - Duplicate-school check; "coaches get notified" toasts tied to publish state
 
 ### C4. `[ ]` Dashboard deltas
@@ -214,7 +215,11 @@ Push notifications: deferred on web too (APNs — genuinely new work).
 - Completeness formula: see C1.
 - Profile view dedupe: 1 per viewer/athlete/6h; self+guardian views never recorded;
   signed-out views recorded as role "public" (service role).
-- Contact windows: D1/D2 open June 15 of (gradYear − 2); D3/NAIA/JUCO always open.
+- Recruiting rules: evaluated server-side by `evaluate_recruiting_action`
+  (versioned, sourced rows in `recruiting_rules`); the web client must call the
+  same RPC rather than port dates. Historical web behavior (D1/D2 June 15,
+  D3/NAIA/JUCO "always open") is retired — D2 has no sourced rule and returns
+  needs_review.
 - Invite code alphabet: `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`, 8 chars.
 - Message/notes/report/details caps: 2000; bio/college-notes: 1000; caption: 120.
 - Apple review seeds: "Jordan Blake" published demo athlete + coach thread + pipeline.

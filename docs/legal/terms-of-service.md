@@ -1,7 +1,9 @@
 <!-- CANONICAL. Identical text is compiled into the app
      (TheHub/Views/Legal/LegalView.swift) and published on the website.
      Users agree to this at sign-up — if you change one, change all three.
-     Last updated 2026-09-21. -->
+     Last updated 2026-09-30 (Section 6 rewritten for the Recruiting Rules
+     Engine; the website copy must be updated to match — see
+     docs/RECRUITING-RULE-MAINTENANCE.md "Website terms"). -->
 
 # The HUB — Terms of Use
 
@@ -25,7 +27,7 @@ You keep ownership of the information, photos, and video links you post. You gra
 There is zero tolerance for objectionable content or abusive behavior. Every profile and conversation includes controls to report content and to block a user. Reports are reviewed by administrators, who may hide content, restrict messaging, or remove accounts. Blocking a user takes effect immediately.
 
 6. COACH ACCESS AND RECRUITING RULES
-Approved coaches are responsible for complying with NCAA, NAIA, NJCAA, and state association contact rules. The HUB does not verify eligibility or monitor recruiting contact, and approval of a coach account is not an endorsement.
+Approved coaches remain responsible for complying with NCAA, NAIA, NJCAA, conference, institution, state association, and other applicable recruiting rules. The HUB may provide rules-based recruiting guidance and may restrict certain actions performed through the Service when the Service has a verified rule indicating that the action is not permitted. These features are informational and operational safeguards; they are not an official eligibility or compliance determination by the NCAA or any other governing body, and they do not guarantee that any coach or institution is compliant. Recruiting rules change and may depend on facts the Service does not know. Confirm questions with the applicable governing body or institution compliance office. The HUB does not verify eligibility, and approval of a coach account is not an endorsement.
 
 7. SUSPENSION AND TERMINATION
 We may suspend or remove accounts that violate these terms or that contain inaccurate or harmful content. You may delete your account at any time from Account in the app.

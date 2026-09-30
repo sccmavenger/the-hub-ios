@@ -16,6 +16,11 @@ struct NCAAJourneyView: View {
     @State private var saveTask: Task<Void, Never>?
     @FocusState private var gpaFocused: Bool
 
+    // Recruiting Rules Engine decisions (backend-evaluated; see
+    // RecruitingRulesService). Re-fetched when the intended division changes.
+    @State private var coachMessagesStatus: RecruitingStatusLoad = .loading
+    @State private var athleteOutreachStatus: RecruitingStatusLoad = .loading
+
     init(athlete: Athlete, readiness: NCAAReadiness? = nil) {
         self.athlete = athlete
         _readiness = State(initialValue: readiness ?? .empty(athleteId: athlete.id))
@@ -60,6 +65,7 @@ struct NCAAJourneyView: View {
                         }
                         nextStepHero
                         timelineCard
+                        recruitingCommunicationCard
                         divisionPicker
                         academicReadinessCard
                         progressCard
@@ -84,6 +90,7 @@ struct NCAAJourneyView: View {
             }
         }
         .task { await loadIfNeeded() }
+        .task(id: readiness.intendedDivision) { await loadRecruitingStatus() }
         .onChange(of: readiness) {
             guard !isLoading else { return }
             scheduleSave()
@@ -167,26 +174,9 @@ struct NCAAJourneyView: View {
             link: ("How registration works", Compliance.registrationInfoURL)
         ))
 
-        if !isD3, let contactDate = Compliance.contactOpensOn(gradYear: athlete.gradYear, division: "D1") {
-            let open = Date.now >= contactDate
-            // Link straight to the athlete's calendar PDF; the hub page is a fallback
-            let calendarLink: (label: String, url: URL)
-            if let gender = SportGender(rawValue: athlete.sportGender ?? "") {
-                let calendar = Compliance.d1Calendar(gender: gender)
-                calendarLink = ("Open the D1 \(gender == .mens ? "men's" : "women's") basketball calendar (PDF)", calendar.url)
-            } else {
-                calendarLink = ("Find your recruiting calendar", Compliance.recruitingCalendarsURL)
-            }
-            steps.append(TimelineStep(
-                id: "contact",
-                state: open ? .done : .upcoming,
-                when: contactDate.formatted(date: .abbreviated, time: .omitted),
-                title: open ? "D1 & D2 coaches may now contact you" : "D1 & D2 coaches may contact you",
-                detail: Compliance.athleteOutreachNote,
-                badge: open ? nil : countdownBadge(to: contactDate),
-                link: calendarLink
-            ))
-        }
+        // Coach-contact timing is no longer a timeline step: it is action-
+        // specific and evaluated by the backend Recruiting Rules Engine. See
+        // recruitingCommunicationCard below.
 
         if isD3 {
             steps.append(TimelineStep(
@@ -221,17 +211,6 @@ struct NCAAJourneyView: View {
         }
 
         return steps
-    }
-
-    private func countdownBadge(to date: Date) -> String? {
-        let components = Calendar.current.dateComponents([.month, .day], from: .now, to: date)
-        if let months = components.month, months >= 1 {
-            return months == 1 ? "1 month away" : "\(months) months away"
-        }
-        if let days = components.day, days >= 0 {
-            return days <= 1 ? "Almost here" : "\(days) days away"
-        }
-        return nil
     }
 
     // MARK: - Next action
@@ -465,6 +444,96 @@ struct NCAAJourneyView: View {
             .padding(.bottom, last ? 0 : 14)
         }
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    // MARK: - Recruiting communication (Recruiting Rules Engine)
+
+    /// Division the engine is asked about. "Unsure" shows D1, the most
+    /// common question, and says so.
+    private var recruitingDivision: String {
+        switch readiness.intendedDivision {
+        case .d1, .unsure: "D1"
+        case .d2: "D2"
+        case .d3: "D3"
+        }
+    }
+
+    /// Action-specific recruiting status from the backend evaluator (spec §17).
+    /// Coach messaging and athlete outreach are separate rows on purpose;
+    /// neither implies anything about calls, visits or in-person contact.
+    private var recruitingCommunicationCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Recruiting Communication")
+                    .font(.headline)
+                    .foregroundStyle(Color.hubPrimary)
+                Spacer()
+                Text("NCAA \(recruitingDivision)")
+                    .font(.caption2.bold())
+                    .foregroundStyle(Color.hubPrimary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.hubPrimary.opacity(0.15))
+                    .clipShape(Capsule())
+            }
+
+            if readiness.intendedDivision == .unsure {
+                Text("Showing NCAA D1 rules. Pick a division below to change.")
+                    .font(.caption)
+                    .foregroundStyle(Color.hubTextSecondary)
+            }
+
+            RecruitingStatusView(title: "Coach recruiting messages", load: coachMessagesStatus)
+
+            Divider().background(Color.hubBorder)
+
+            AthleteOutreachStatusView(load: athleteOutreachStatus)
+
+            if let gender = SportGender(rawValue: athlete.sportGender ?? "") {
+                let calendar = Compliance.d1Calendar(gender: gender)
+                Link(destination: calendar.url) {
+                    HStack(spacing: 4) {
+                        Text("Open the D1 \(gender == .mens ? "men's" : "women's") basketball recruiting calendar (PDF)")
+                        Image(systemName: "arrow.up.right")
+                    }
+                    .font(.caption.bold())
+                    .foregroundStyle(Color.hubPrimary)
+                }
+            }
+
+            Text(Compliance.actionSpecificNote)
+                .font(.caption2)
+                .foregroundStyle(Color.hubTextSecondary)
+            Text(Compliance.rulesEngineDisclaimer)
+                .font(.caption2)
+                .foregroundStyle(Color.hubTextSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.hubSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func loadRecruitingStatus() async {
+        coachMessagesStatus = .loading
+        athleteOutreachStatus = .loading
+        let division = recruitingDivision
+        let service = RecruitingRulesService.shared
+        async let coach = service.load(
+            athleteId: athlete.id,
+            action: .coachSendRecruitingElectronicCorrespondence,
+            governingBody: "NCAA",
+            division: division
+        )
+        async let outreach = service.load(
+            athleteId: athlete.id,
+            action: .athleteSendIntroMessage,
+            governingBody: "NCAA",
+            division: division
+        )
+        let (coachResult, outreachResult) = await (coach, outreach)
+        coachMessagesStatus = coachResult
+        athleteOutreachStatus = outreachResult
     }
 
     // MARK: - Division

@@ -151,6 +151,11 @@ as $$
     'reason', p_reason,
     'user_message', p_user_message,
     'next_permitted_at', recruiting_iso(p_next),
+    -- Calendar date in the rule's own time zone, so clients in other zones
+    -- show "June 15", not "June 14 9 PM".
+    'next_permitted_on', case when p_next is null then null
+                              else to_char(p_next at time zone coalesce(r.start_time_zone, 'UTC'), 'YYYY-MM-DD') end,
+    'rule_time_zone', r.start_time_zone,
     'enforcement', p_enforcement,
     'missing_context', to_jsonb(coalesce(p_missing, '{}'::text[])),
     'conflict', coalesce(p_conflict, false),

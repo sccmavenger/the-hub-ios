@@ -401,28 +401,38 @@ struct ThreadDetailView: View {
     // MARK: - Compose
 
     private var composeBar: some View {
-        HStack(spacing: 10) {
-            TextField("Message", text: $draft, axis: .vertical)
-                .lineLimit(1...4)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color.hubSurface)
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 18))
+        VStack(spacing: 6) {
+            // Athlete outreach is always allowed here; the coach's reply may
+            // be limited by their recruiting window (spec §18).
+            Text("You can message coaches anytime. NCAA rules may limit how a coach can reply before their recruiting window opens.")
+                .font(.caption2)
+                .foregroundStyle(Color.hubTextSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 4)
 
-            Button {
-                Task { await send() }
-            } label: {
-                if isSending {
-                    ProgressView().tint(Color.hubPrimary)
-                } else {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.title)
-                        .foregroundStyle(draft.isBlank ? Color.hubTextSecondary : Color.hubPrimary)
+            HStack(spacing: 10) {
+                TextField("Message", text: $draft, axis: .vertical)
+                    .lineLimit(1...4)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Color.hubSurface)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+
+                Button {
+                    Task { await send() }
+                } label: {
+                    if isSending {
+                        ProgressView().tint(Color.hubPrimary)
+                    } else {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.title)
+                            .foregroundStyle(draft.isBlank ? Color.hubTextSecondary : Color.hubPrimary)
+                    }
                 }
+                .disabled(draft.isBlank || isSending)
+                .accessibilityLabel("Send message")
             }
-            .disabled(draft.isBlank || isSending)
-            .accessibilityLabel("Send message")
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
@@ -443,6 +453,10 @@ struct ThreadDetailView: View {
             )
             messages.append(message)
             draft = ""
+        } catch let recruiting as RecruitingRulesError {
+            // The database rejected the send under a verified recruiting rule.
+            // Server result is authoritative; show its reason (spec §18).
+            actionError = recruiting.userMessage
         } catch {
             actionError = "Your message couldn't be sent. Check your connection and try again."
         }

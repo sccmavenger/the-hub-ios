@@ -15,6 +15,7 @@ struct AdminSettingsView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     logoToggleCard
+                    recruitingRulesCard
                     if let errorMessage {
                         HubErrorText(message: errorMessage)
                     }
@@ -37,7 +38,7 @@ struct AdminSettingsView: View {
             Toggle(isOn: Binding(
                 get: { settings.collegeLogosEnabled },
                 set: { newValue in
-                    Task { await save(newValue) }
+                    Task { await save(.collegeLogos, newValue) }
                 }
             )) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -72,12 +73,69 @@ struct AdminSettingsView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
-    private func save(_ enabled: Bool) async {
+    /// Staged rollout controls for the Recruiting Rules Engine (spec §24):
+    /// Stage A = display on / enforcement off; Stage B = both on.
+    private var recruitingRulesCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Recruiting Rules Engine")
+                .font(.headline)
+                .foregroundStyle(Color.hubPrimary)
+
+            Toggle(isOn: Binding(
+                get: { settings.recruitingRulesEngineEnabled },
+                set: { newValue in
+                    Task { await save(.recruitingRulesEngine, newValue) }
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Show recruiting status")
+                        .foregroundStyle(.white)
+                    Text("NCAA Journey, Colleges and Messages show rules-based status from the backend. Off shows \"Recruiting status unavailable\".")
+                        .font(.caption)
+                        .foregroundStyle(Color.hubTextSecondary)
+                }
+            }
+            .tint(Color.hubPrimary)
+            .disabled(isSaving)
+
+            Toggle(isOn: Binding(
+                get: { settings.recruitingRulesEnforcementEnabled },
+                set: { newValue in
+                    Task { await save(.recruitingRulesEnforcement, newValue) }
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Enforce coach message rules")
+                        .foregroundStyle(.white)
+                    Text("The database rejects a verified coach's in-app message when a published rule prohibits it. Off = shadow mode: evaluate and log only.")
+                        .font(.caption)
+                        .foregroundStyle(Color.hubTextSecondary)
+                }
+            }
+            .tint(Color.hubPrimary)
+            .disabled(isSaving)
+
+            Divider().background(Color.hubBorder)
+
+            Label(
+                "Enforcement only applies to coaches with an admin-verified program. Unverified coaches and unsourced divisions return \"needs review\" and are never blocked.",
+                systemImage: "info.circle.fill"
+            )
+            .font(.caption)
+            .foregroundStyle(Color.hubTextSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.hubSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func save(_ flag: AppSettingsService.Flag, _ enabled: Bool) async {
         isSaving = true
         errorMessage = nil
         defer { isSaving = false }
         do {
-            try await settings.setCollegeLogosEnabled(enabled)
+            try await settings.setFlag(flag, enabled: enabled)
         } catch {
             errorMessage = "Couldn't update the setting. \(error.localizedDescription)"
             await settings.refresh()
