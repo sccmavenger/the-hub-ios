@@ -19,14 +19,27 @@ struct SignUpView: View {
 
     private var isUnder13: Bool { athleteAge < 13 }
 
+    // College Coach application claims. Sent as signup metadata; the server
+    // files a PENDING coach request and grants no role (supabase/014).
+    @State private var coachTitle = ""
+    @State private var institution = ""
+    @State private var coachSportGender: SportGender? = nil
+    @State private var governingBody: GoverningBody? = nil
+    @State private var numberedDivision: String? = nil
+    @State private var divisionText = ""
+    @State private var athleticsUrl = ""
+    @State private var programUrl = ""
+    @State private var phone = ""
+    @State private var verificationNote = ""
+
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showEmailConfirmation = false
     @State private var legalDocument: LegalDocument?
 
-    // Coach onboarding happens on the web (accounts are admin-reviewed there);
-    // the iOS app signs up athletes and parents only.
-    private let signupRoles: [AppRole] = [.athlete, .parent]
+    // Admin is never a sign-up option. Coach sign-up is an *application*:
+    // the account works immediately, coach access waits for admin approval.
+    private let signupRoles: [AppRole] = [.athlete, .parent, .coach]
 
     var body: some View {
         ZStack {
@@ -60,7 +73,11 @@ struct SignUpView: View {
         .alert("Confirm Your Email", isPresented: $showEmailConfirmation) {
             Button("OK") { dismiss() }
         } message: {
-            Text("We sent a confirmation link to \(email). Tap it, then come back and sign in.")
+            if selectedRole == .coach {
+                Text("We sent a confirmation link to \(email). Tap it, then sign in to track your coach application.")
+            } else {
+                Text("We sent a confirmation link to \(email). Tap it, then come back and sign in.")
+            }
         }
         .sheet(item: $legalDocument) { document in
             LegalView(document: document)
@@ -71,7 +88,7 @@ struct SignUpView: View {
 
     private var rolePicker: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("I am a...")
+            Text("How will you use The Hub?")
                 .font(.headline)
                 .foregroundStyle(.white)
 
@@ -90,6 +107,14 @@ struct SignUpView: View {
         VStack(spacing: 16) {
             HubTextField(label: "Full Name", text: $fullName, textContentType: .name, autocapitalization: .words)
             HubTextField(label: "Email", text: $email, keyboardType: .emailAddress, textContentType: .emailAddress)
+            if role == .coach {
+                // A school domain is a verification *signal*, not a requirement —
+                // athletics departments use many domains, so .edu is not enforced.
+                Text("Use your official school or athletics email when possible. It helps us verify your affiliation faster.")
+                    .font(.caption)
+                    .foregroundStyle(Color.hubTextSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             HubSecureField(label: "Password", text: $password)
             // Reserve the hint's space instead of inserting/removing a view:
             // the layout shift on each keystroke was re-creating the
@@ -146,7 +171,74 @@ struct SignUpView: View {
                     .multilineTextAlignment(.center)
             }
 
+            if role == .coach {
+                coachFields
+            }
+
             termsConsent
+        }
+    }
+
+    /// Program affiliation claims. Everything here is reviewed by an admin
+    /// before any athlete data becomes visible.
+    private var coachFields: some View {
+        VStack(spacing: 16) {
+            Divider().background(Color.hubBorder)
+
+            Text("Your Program")
+                .font(.headline)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HubTextField(label: "Job Title", text: $coachTitle, textContentType: .jobTitle, autocapitalization: .words, maxLength: 120)
+            HubTextField(label: "Institution / College", text: $institution, textContentType: .organizationName, autocapitalization: .words, maxLength: 200)
+
+            HubSegmentedField(label: "Basketball Program", selection: $coachSportGender, options: SportGender.allCases) {
+                $0.displayName
+            }
+
+            HubMenuField(
+                label: "Association",
+                selection: $governingBody,
+                options: GoverningBody.allCases,
+                placeholder: "Select…"
+            ) { $0.displayName }
+
+            if let governingBody, governingBody.hasNumberedDivisions {
+                HubSegmentedField(label: "Division", selection: $numberedDivision, options: GoverningBody.numberedDivisions) {
+                    $0.replacingOccurrences(of: "D", with: "Division ")
+                }
+            } else if let governingBody, governingBody != .naia {
+                HubTextField(label: "Division / Level (optional)", text: $divisionText, autocapitalization: .words, maxLength: 40)
+            }
+
+            Text("Optional — speeds up verification")
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(Color.hubTextSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 4)
+
+            HubTextField(label: "Athletics Staff Directory URL", text: $athleticsUrl, keyboardType: .URL, textContentType: .URL)
+            HubTextField(label: "Program Website URL", text: $programUrl, keyboardType: .URL, textContentType: .URL)
+            HubTextField(label: "Phone", text: $phone, keyboardType: .phonePad, textContentType: .telephoneNumber, maxLength: 40)
+            HubMultilineField(
+                label: "Anything that helps us verify you",
+                text: $verificationNote,
+                placeholder: "e.g. where you're listed on the staff page",
+                maxLength: 2000
+            )
+
+            Label(
+                "Coach access is reviewed before it's granted. You can sign in right away to track your application; athlete recruiting features unlock once we verify your program affiliation.",
+                systemImage: "checkmark.shield"
+            )
+            .font(.caption)
+            .foregroundStyle(Color.hubTextSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(Color.hubSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
     }
 
@@ -182,10 +274,53 @@ struct SignUpView: View {
     private func isFormValid(role: AppRole) -> Bool {
         guard !fullName.isBlank, email.isValidEmail,
               password.isValidPassword, password == confirmPassword else { return false }
-        if role == .athlete {
+        switch role {
+        case .athlete:
             return !isUnder13
+        case .coach:
+            return coachApplication != nil
+        case .parent, .admin:
+            return true
         }
-        return true
+    }
+
+    /// The claims to submit, or nil while required coach fields are missing.
+    private var coachApplication: AuthService.CoachApplication? {
+        guard !coachTitle.isBlank, !institution.isBlank,
+              let coachSportGender, let governingBody else { return nil }
+        let division: String?
+        if governingBody.hasNumberedDivisions {
+            // NCAA rules are division-specific; don't let an NCAA claim omit it.
+            guard let numberedDivision else { return nil }
+            division = numberedDivision
+        } else if governingBody == .naia {
+            division = nil
+        } else {
+            division = divisionText.isBlank ? nil : divisionText.trimmed
+        }
+        return AuthService.CoachApplication(
+            fullName: fullName.trimmed,
+            title: coachTitle.trimmed,
+            institution: institution.trimmed,
+            governingBody: governingBody,
+            division: division,
+            sportGender: coachSportGender,
+            athleticsUrl: Self.normalizedURL(athleticsUrl),
+            programUrl: Self.normalizedURL(programUrl),
+            phone: phone.isBlank ? nil : phone.trimmed,
+            note: verificationNote.isBlank ? nil : verificationNote.trimmed
+        )
+    }
+
+    /// Coaches type "athletics.school.edu/staff"; the server only keeps
+    /// http(s) URLs, so add the scheme rather than silently dropping the link.
+    private static func normalizedURL(_ raw: String) -> String? {
+        let value = raw.trimmed
+        guard !value.isEmpty else { return nil }
+        if value.lowercased().hasPrefix("http://") || value.lowercased().hasPrefix("https://") {
+            return value
+        }
+        return "https://" + value
     }
 
     private func signUp(role: AppRole) async {
@@ -211,8 +346,16 @@ struct SignUpView: View {
                 needsEmailConfirmation = try await AuthService.shared.signUpParent(
                     email: email, password: password, fullName: fullName.trimmed
                 )
-            case .coach, .admin:
-                return // not offered in the iOS app
+            case .coach:
+                guard let coachApplication else {
+                    errorMessage = "Please complete your program details."
+                    return
+                }
+                needsEmailConfirmation = try await AuthService.shared.signUpCoach(
+                    email: email, password: password, application: coachApplication
+                )
+            case .admin:
+                return // never a sign-up option
             }
 
             if needsEmailConfirmation {

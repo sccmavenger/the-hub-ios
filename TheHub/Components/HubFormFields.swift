@@ -85,6 +85,108 @@ struct HubSecureField: View {
     }
 }
 
+/// Multi-line text field (notes, reasons) in the same chrome as HubTextField.
+struct HubMultilineField: View {
+    let label: String
+    @Binding var text: String
+    var placeholder: String = ""
+    var lineRange: ClosedRange<Int> = 3...6
+    var maxLength: Int? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(Color.hubTextSecondary)
+
+            TextField(placeholder, text: $text, axis: .vertical)
+                .lineLimit(lineRange)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(Color.hubSurface)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.hubBorder, lineWidth: 1)
+                )
+                .onChange(of: text) {
+                    if let maxLength, text.count > maxLength {
+                        text = String(text.prefix(maxLength))
+                    }
+                }
+        }
+    }
+}
+
+/// Caption label + segmented control for a small, closed set of options.
+/// `selection` is optional so a form can start with nothing chosen.
+struct HubSegmentedField<Option: Hashable>: View {
+    let label: String
+    @Binding var selection: Option?
+    let options: [Option]
+    let title: (Option) -> String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(Color.hubTextSecondary)
+
+            Picker(label, selection: $selection) {
+                ForEach(options, id: \.self) { option in
+                    Text(title(option)).tag(Optional(option))
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+        }
+    }
+}
+
+/// Caption label + menu picker, for longer option lists.
+struct HubMenuField<Option: Hashable>: View {
+    let label: String
+    @Binding var selection: Option?
+    let options: [Option]
+    let placeholder: String
+    let title: (Option) -> String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(Color.hubTextSecondary)
+
+            Menu {
+                ForEach(options, id: \.self) { option in
+                    Button(title(option)) { selection = option }
+                }
+            } label: {
+                HStack {
+                    Text(selection.map(title) ?? placeholder)
+                        .foregroundStyle(selection == nil ? Color.hubTextSecondary : .white)
+                    Spacer()
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption)
+                        .foregroundStyle(Color.hubTextSecondary)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(Color.hubSurface)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.hubBorder, lineWidth: 1)
+                )
+            }
+        }
+    }
+}
+
 /// Full-width primary action button in Hub gold.
 struct HubPrimaryButton: View {
     let label: String
