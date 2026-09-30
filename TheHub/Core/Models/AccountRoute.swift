@@ -2,7 +2,9 @@ import Foundation
 
 /// Where a signed-in account lands. Resolved from roles *and* coach-application
 /// state, so "no role" is never assumed to mean "pending coach" (spec §16).
-enum AccountRoute: Equatable {
+// nonisolated: pure values compared in tests and off the main actor; the
+// target defaults types to @MainActor, which would isolate Equatable too.
+nonisolated enum AccountRoute: Equatable, Sendable {
     /// Roles (and, if needed, the coach application) are still being fetched.
     case loading
     case athlete
@@ -26,13 +28,13 @@ enum AccountRoute: Equatable {
 }
 
 /// Load state of the caller's coach application.
-enum CoachRequestLoad: Equatable {
+nonisolated enum CoachRequestLoad: Equatable, Sendable {
     case notLoaded
     case loaded(CoachRequest?)
     case failed
 }
 
-enum AccountStateResolver {
+nonisolated enum AccountStateResolver {
     /// Pure function of the fetched state. Role precedence matches the old
     /// `primaryRole` (admin > coach > athlete > parent) so existing accounts
     /// route exactly as before.

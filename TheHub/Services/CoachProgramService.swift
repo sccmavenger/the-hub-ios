@@ -62,7 +62,7 @@ nonisolated struct CoachProgramContext: Codable, Equatable, Identifiable, Sendab
     }
 }
 
-enum CoachProgramContextLoad: Equatable {
+nonisolated enum CoachProgramContextLoad: Equatable, Sendable {
     case notLoaded
     case loading
     case loaded([CoachProgramContext])
