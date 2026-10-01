@@ -39,6 +39,11 @@ set check_function_bodies = off;
 -- ---------------------------------------------------------------------------
 alter table public.athlete_photos add column if not exists storage_path text;
 alter table public.athletes add column if not exists profile_photo_path text;
+-- New rows carry a path only; the legacy url becomes optional.
+alter table public.athlete_photos alter column url drop not null;
+alter table public.athlete_photos drop constraint if exists athlete_photos_path_or_url;
+alter table public.athlete_photos add constraint athlete_photos_path_or_url
+  check (storage_path is not null or url is not null);
 
 create index if not exists idx_athlete_photos_storage_path
   on public.athlete_photos (storage_path) where storage_path is not null;

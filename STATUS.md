@@ -216,10 +216,15 @@ backend: `supabase/014-coach-onboarding.sql`; tests:
   2026-09-30; public inbox — delete before real athletes publish) plus the admin.
   ⚠️ Before the next App Review submission: update review notes (coach sign-up exists,
   access is manually approved) and consider a demo coach path (TECH-DEBT #18, #29).
-- **Phase 2 (Coach Workspace: Home | Discover | Recruiting Board | Messages | Program)**
-  is in gap analysis: `docs/COACH-MODE-PHASE2-GAP-ANALYSIS.md` (2026-09-30). No code yet;
-  waiting on the product/security decisions in its §E. Live S1 findings from that review
-  are TECH-DEBT #32–#34.
+- **Phase 2 (Coach Workspace)** — spec `docs/COACH-MODE-WORKSPACE-SPEC.md` (2.0 = Home ·
+  Discover · Board · Program; 2.1 = Messages · Notifications · alerts). Decisions in
+  `docs/COACH-MODE-PHASE2-DECISIONS.md`; gap analysis `docs/COACH-MODE-PHASE2-GAP-ANALYSIS.md`.
+  - **2A done 2026-10-01** (migrations 015–016 applied, `record-profile-view` v2 deployed):
+    media stored as paths and signed for 60 min per photo row; coaches read athletes only
+    through allowlisted RPCs scoped to a verified program; blocks apply to every coach read;
+    admin role exclusive; interest notifications by membership. TECH-DEBT #6/#9/#32/#33/#34/#36/#37
+    closed. ⚠️ Until 2C ships Discover, an approved coach's app shows the program card only.
+  - Next: 2B (program switcher, board data layer, migration 017) after Danny's gate.
 
 ## Tech Decisions Made
 - **iOS 17+ only** — uses `@Observable` macro, no Combine

@@ -26,7 +26,7 @@ enum ProfileCompleteness {
     ) -> [Item] {
         [
             Item(key: "name", label: "Name", weight: 5, done: !athlete.fullName.isBlank),
-            Item(key: "photo", label: "Profile photo", weight: 10, done: athlete.profilePhotoUrl != nil),
+            Item(key: "photo", label: "Profile photo", weight: 10, done: athlete.hasProfilePhoto),
             Item(key: "school", label: "High school", weight: 5, done: !(athlete.highSchool ?? "").isBlank),
             Item(key: "grad", label: "Grad year", weight: 10, done: athlete.gradYear != nil),
             Item(key: "position", label: "Position", weight: 10, done: !(athlete.position ?? "").isBlank),

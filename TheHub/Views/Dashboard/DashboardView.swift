@@ -159,14 +159,11 @@ struct DashboardView: View {
 
     private func header(for athlete: Athlete) -> some View {
         HStack(spacing: 14) {
-            KFImage(URL(string: athlete.profilePhotoUrl ?? ""))
-                .placeholder {
-                    Image(systemName: "person.circle.fill")
-                        .font(.system(size: 56))
-                        .foregroundStyle(Color.hubTextSecondary)
-                }
-                .resizable()
-                .scaledToFill()
+            HubRemoteImage(path: athlete.profilePhotoPath, legacyURL: athlete.profilePhotoUrl) {
+                Image(systemName: "person.circle.fill")
+                    .font(.system(size: 56))
+                    .foregroundStyle(Color.hubTextSecondary)
+            }
                 .frame(width: 56, height: 56)
                 .clipShape(Circle())
 

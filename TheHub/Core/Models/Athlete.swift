@@ -38,6 +38,13 @@ nonisolated struct Athlete: Codable, Identifiable, Sendable {
     var academicCalendarType: String? = nil
     /// Required only when `academicCalendarType` is `nontraditional`.
     var sophomoreCompletedOn: String? = nil
+    /// Storage object path of the profile photo (supabase/015). Preferred over
+    /// `profilePhotoUrl`, which is the legacy long-lived signed URL.
+    var profilePhotoPath: String? = nil
+
+    var hasProfilePhoto: Bool {
+        profilePhotoPath != nil || profilePhotoUrl != nil
+    }
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -73,6 +80,7 @@ nonisolated struct Athlete: Codable, Identifiable, Sendable {
         case updatedAt = "updated_at"
         case academicCalendarType = "academic_calendar_type"
         case sophomoreCompletedOn = "sophomore_completed_on"
+        case profilePhotoPath = "profile_photo_path"
     }
 
     var heightDisplay: String? {
@@ -87,7 +95,7 @@ nonisolated struct Athlete: Codable, Identifiable, Sendable {
 
     var completenessScore: Int {
         var score = 0
-        if profilePhotoUrl != nil { score += 20 }
+        if hasProfilePhoto { score += 20 }
         if bio != nil && !(bio?.isEmpty ?? true) { score += 15 }
         if gpa != nil { score += 10 }
         if heightInches != nil && weightLbs != nil { score += 10 }

@@ -114,12 +114,14 @@ final class AthleteService {
             .value
     }
 
-    func addPhoto(athleteId: String, url: String, caption: String? = nil) async throws -> AthletePhoto {
+    /// Records an uploaded gallery photo by its storage path (supabase/015).
+    /// No URL is stored; readers sign the path on demand via MediaService.
+    func addPhoto(athleteId: String, storagePath: String, caption: String? = nil) async throws -> AthletePhoto {
         try await supabase
             .from("athlete_photos")
             .insert([
                 "athlete_id": AnyJSON.string(athleteId),
-                "url": .string(url),
+                "storage_path": .string(storagePath),
                 "caption": caption.map(AnyJSON.string) ?? .null
             ])
             .select()
@@ -324,36 +326,35 @@ final class AthleteService {
 
     // MARK: - Storage
 
+    // Bucket is private. Uploads return the object PATH, which rows store;
+    // readers sign it for 60 minutes at read time (MediaService, supabase/015).
+    // Long-lived signed URLs are no longer created or stored (TECH-DEBT #6).
+
+    /// Uploads (replacing) the profile photo and returns its storage path.
     func uploadProfilePhoto(data: Data, userId: String) async throws -> String {
         let path = "\(userId)/profile.jpg"
         try await supabase.storage
-            .from("athlete-media")
+            .from(MediaService.bucket)
             .upload(
                 path,
                 data: data,
                 options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: true)
             )
-        return try await signedURL(for: path)
+        MediaService.shared.invalidate(path)   // the bytes changed; drop any cached signature
+        return path
     }
 
+    /// Uploads a new gallery photo and returns its storage path.
     func uploadGalleryPhoto(data: Data, userId: String) async throws -> String {
         let path = "\(userId)/gallery/\(UUID().uuidString).jpg"
         try await supabase.storage
-            .from("athlete-media")
+            .from(MediaService.bucket)
             .upload(
                 path,
                 data: data,
                 options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: false)
             )
-        return try await signedURL(for: path)
-    }
-
-    // Bucket is private (web-app parity) — media is referenced via long-lived signed URLs
-    private func signedURL(for path: String) async throws -> String {
-        try await supabase.storage
-            .from("athlete-media")
-            .createSignedURL(path: path, expiresIn: 60 * 60 * 24 * 365)
-            .absoluteString
+        return path
     }
 
     // MARK: - Activity details
@@ -474,10 +475,15 @@ final class AthleteService {
 
     // MARK: - Edge functions
 
-    func recordProfileView(athleteId: String) async throws {
+    /// Logs a profile view. The function records it only when the caller may
+    /// see the athlete right now (published, not blocked, active coach with a
+    /// verified membership in `programId`); refusals are silent 204s.
+    func recordProfileView(athleteId: String, programId: String? = nil) async throws {
+        var body: [String: String] = ["athleteId": athleteId]
+        if let programId { body["programId"] = programId }
         try await supabase.functions.invoke(
             "record-profile-view",
-            options: .init(body: ["athleteId": athleteId])
+            options: .init(body: body)
         )
     }
 }

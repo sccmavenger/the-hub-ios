@@ -4,7 +4,8 @@
 **Repository:** `sccmavenger/the-hub-ios`
 **Primary client:** iOS / SwiftUI · **Backend:** Supabase / PostgreSQL
 **Prepared:** 2026-10-01 (Danny + Claude, from `COACH-MODE-PHASE2-DECISIONS.md` and `COACH-MODE-PHASE2-GAP-ANALYSIS.md`)
-**Status:** DRAFT for review. Sections marked **[routine call]** are choices Claude made where the decision record was silent; overrule by editing.
+**Status:** Phase 2A (§5–§7 backend, media) **implemented 2026-10-01** in `supabase/015`, `supabase/016`, `record-profile-view` v2, `MediaService`/`HubRemoteImage`. Remaining sections are the approved plan. Sections marked **[routine call]** are choices Claude made where the decision record was silent; overrule by editing.
+**Implementation notes (2A):** migration order is 015 = media paths, 016 = security (the detail RPC needs the path column). No SQL signing RPC exists — Supabase signs in the Storage service — so the per-row `storage.objects` policies are the authorization boundary and the client requests 60-minute signed URLs directly (§7 amended). Helper EXECUTE grants cannot be revoked from `authenticated` because RLS evaluates helpers as the caller; `athlete_is_published()` instead returns false for callers with no coach/admin/manager relationship (§6.5 amended).
 **Scope:** Release **2.0** = security foundation, program context, Discover, shared Recruiting Board, contact unlock, Home. Release **2.1** = Messages, Notifications, saved-search alerts.
 **Out of scope:** Event Mode (games/tournament browsing), CSV export, AI features, pre-window message templates, program-wide blocks, Admin/Coach switching.
 

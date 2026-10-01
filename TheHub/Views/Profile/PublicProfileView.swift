@@ -70,14 +70,11 @@ struct PublicProfileView: View {
 
     private var header: some View {
         VStack(spacing: 12) {
-            KFImage(URL(string: athlete.profilePhotoUrl ?? ""))
-                .placeholder {
-                    Image(systemName: "person.circle.fill")
-                        .font(.system(size: 88))
-                        .foregroundStyle(Color.hubTextSecondary)
-                }
-                .resizable()
-                .scaledToFill()
+            HubRemoteImage(path: athlete.profilePhotoPath, legacyURL: athlete.profilePhotoUrl) {
+                Image(systemName: "person.circle.fill")
+                    .font(.system(size: 88))
+                    .foregroundStyle(Color.hubTextSecondary)
+            }
                 .frame(width: 88, height: 88)
                 .clipShape(Circle())
 
@@ -155,12 +152,9 @@ struct PublicProfileView: View {
                         Color.clear
                             .aspectRatio(1, contentMode: .fit)
                             .overlay {
-                                KFImage(URL(string: photo.url))
-                                    .placeholder {
-                                        Rectangle().fill(Color.hubSurfaceElevated)
-                                    }
-                                    .resizable()
-                                    .scaledToFill()
+                                HubRemoteImage(path: photo.storagePath, legacyURL: photo.url) {
+                                    Rectangle().fill(Color.hubSurfaceElevated)
+                                }
                             }
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                             .contentShape(RoundedRectangle(cornerRadius: 8))
@@ -340,13 +334,10 @@ private struct PhotoViewer: View {
             TabView(selection: $index) {
                 ForEach(Array(photos.enumerated()), id: \.element.id) { i, photo in
                     VStack(spacing: 12) {
-                        KFImage(URL(string: photo.url))
-                            .placeholder {
-                                ProgressView()
-                                    .tint(Color.hubTextSecondary)
-                            }
-                            .resizable()
-                            .scaledToFit()
+                        HubRemoteImage(path: photo.storagePath, legacyURL: photo.url, contentMode: .fit) {
+                            ProgressView()
+                                .tint(Color.hubTextSecondary)
+                        }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                         if let caption = photo.caption, !caption.isBlank {

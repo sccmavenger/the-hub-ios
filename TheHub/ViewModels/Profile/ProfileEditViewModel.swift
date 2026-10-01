@@ -350,11 +350,12 @@ final class ProfileEditViewModel {
         defer { isUploadingProfilePhoto = false }
 
         do {
-            let url = try await AthleteService.shared.uploadProfilePhoto(
+            let path = try await AthleteService.shared.uploadProfilePhoto(
                 data: jpegData,
                 userId: current.userId
             )
-            current.profilePhotoUrl = url
+            current.profilePhotoPath = path
+            current.profilePhotoUrl = nil   // stop carrying the legacy long-lived URL
             try await AthleteService.shared.updateAthlete(current)
             athlete = current
         } catch {
@@ -393,11 +394,11 @@ final class ProfileEditViewModel {
         defer { isUploadingGalleryPhoto = false }
 
         do {
-            let url = try await AthleteService.shared.uploadGalleryPhoto(
+            let path = try await AthleteService.shared.uploadGalleryPhoto(
                 data: jpegData,
                 userId: current.userId
             )
-            let photo = try await AthleteService.shared.addPhoto(athleteId: current.id, url: url)
+            let photo = try await AthleteService.shared.addPhoto(athleteId: current.id, storagePath: path)
             photos.append(photo)
         } catch {
             errorMessage = error.localizedDescription

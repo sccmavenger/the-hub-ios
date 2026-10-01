@@ -257,14 +257,11 @@ struct ProfileEditView: View {
     private var profilePhotoSection: some View {
         HubFormSection("Profile Photo") {
             HStack(spacing: 16) {
-                KFImage(URL(string: viewModel.athlete?.profilePhotoUrl ?? ""))
-                    .placeholder {
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 72))
-                            .foregroundStyle(Color.hubTextSecondary)
-                    }
-                    .resizable()
-                    .scaledToFill()
+                HubRemoteImage(path: viewModel.athlete?.profilePhotoPath, legacyURL: viewModel.athlete?.profilePhotoUrl) {
+                    Image(systemName: "person.circle.fill")
+                        .font(.system(size: 72))
+                        .foregroundStyle(Color.hubTextSecondary)
+                }
                     .frame(width: 72, height: 72)
                     .clipShape(Circle())
 
@@ -586,17 +583,14 @@ private struct GalleryTile: View {
             Color.clear
                 .aspectRatio(1, contentMode: .fit)
                 .overlay {
-                    KFImage(URL(string: photo.url))
-                        .placeholder {
-                            Rectangle()
-                                .fill(Color.hubSurfaceElevated)
-                                .overlay {
-                                    ProgressView()
-                                        .tint(Color.hubTextSecondary)
-                                }
-                        }
-                        .resizable()
-                        .scaledToFill()
+                    HubRemoteImage(path: photo.storagePath, legacyURL: photo.url) {
+                        Rectangle()
+                            .fill(Color.hubSurfaceElevated)
+                            .overlay {
+                                ProgressView()
+                                    .tint(Color.hubTextSecondary)
+                            }
+                    }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay(alignment: .topTrailing) {
