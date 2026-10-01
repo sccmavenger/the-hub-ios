@@ -1,6 +1,16 @@
-// record-profile-view — mirrors the web app's recordProfileView server function:
-// never counts self/guardian views, dedupes to one view per viewer per athlete
-// per 6 hours, labels coach views with their program.
+// record-profile-view — logs that a signed-in user viewed an athlete's profile.
+//
+// 2026-10-01 (Coach Mode 2A, spec §6.8, decisions D7 / W8): a view is recorded
+// only when the caller is allowed to see the athlete right now —
+//   • athlete exists AND is published,
+//   • the viewer is not blocked by the athlete's owner or any linked guardian,
+//   • a coach viewer holds the derived coach role AND a verified membership in
+//     the program they say they are viewing as (`programId`), which also
+//     supplies the label athletes see ("CW University Men's Basketball").
+// Self and guardian views never count; one view per viewer per athlete per 6 h.
+//
+// Every refusal returns 204 with no body so the endpoint cannot be used to
+// learn whether an athlete id exists or is published (TECH-DEBT #9).
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 function json(body: unknown, status = 200): Response {
@@ -9,6 +19,9 @@ function json(body: unknown, status = 200): Response {
     headers: { "Content-Type": "application/json" },
   });
 }
+const skipped = () => new Response(null, { status: 204 });
+
+const GENDER_LABEL: Record<string, string> = { mens: "Men's", womens: "Women's" };
 
 Deno.serve(async (req) => {
   try {
@@ -23,6 +36,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const athleteId = typeof body?.athleteId === "string" ? body.athleteId : null;
+    const programId = typeof body?.programId === "string" ? body.programId : null;
     if (!athleteId) return json({ error: "athleteId is required" }, 400);
 
     const admin = createClient(
@@ -32,31 +46,28 @@ Deno.serve(async (req) => {
 
     const { data: athlete } = await admin
       .from("athletes")
-      .select("id, user_id")
+      .select("id, user_id, is_published")
       .eq("id", athleteId)
       .maybeSingle();
-    if (!athlete) return json({ error: "Athlete not found" }, 404);
+    if (!athlete || !athlete.is_published) return skipped();
 
     // Self and guardian views never count
-    if (athlete.user_id === user.id) return json({ skipped: "self" });
-    const { data: guardianLink } = await admin
+    if (athlete.user_id === user.id) return skipped();
+    const { data: guardians } = await admin
       .from("athlete_guardians")
-      .select("id")
-      .eq("athlete_id", athleteId)
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (guardianLink) return json({ skipped: "guardian" });
+      .select("user_id")
+      .eq("athlete_id", athleteId);
+    const guardianIds = (guardians ?? []).map((g: { user_id: string }) => g.user_id);
+    if (guardianIds.includes(user.id)) return skipped();
 
-    // One view per viewer per athlete per 6 hours
-    const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-    const { data: recent } = await admin
-      .from("athlete_profile_views")
+    // Blocked by the owner or any guardian → no view, no signal
+    const { data: blocks } = await admin
+      .from("user_blocks")
       .select("id")
-      .eq("athlete_id", athleteId)
-      .eq("viewer_user_id", user.id)
-      .gte("created_at", since)
+      .eq("blocked_user_id", user.id)
+      .in("blocker_user_id", [athlete.user_id, ...guardianIds])
       .limit(1);
-    if (recent && recent.length > 0) return json({ skipped: "dedupe" });
+    if (blocks && blocks.length > 0) return skipped();
 
     const { data: roles } = await admin
       .from("user_roles")
@@ -67,13 +78,36 @@ Deno.serve(async (req) => {
 
     let viewerLabel: string | null = null;
     if (viewerRole === "coach") {
-      const { data: request } = await admin
-        .from("coach_requests")
-        .select("college")
-        .eq("user_id", user.id)
+      // Coaches must name the program they are viewing as, and hold a verified
+      // membership in it. The label is the verified program, never the
+      // application's free-text claim.
+      if (!programId) return skipped();
+      const { data: membership } = await admin
+        .from("coach_program_memberships")
+        .select("status, recruiting_programs(institution_name, sport_gender, sport, active, verified_at)")
+        .eq("coach_user_id", user.id)
+        .eq("program_id", programId)
+        .eq("status", "verified")
         .maybeSingle();
-      viewerLabel = request?.college ?? "College program";
+      const program = (membership as any)?.recruiting_programs;
+      if (!membership || !program || !program.active || !program.verified_at) return skipped();
+      const gender = GENDER_LABEL[program.sport_gender] ?? "";
+      const sport = String(program.sport ?? "basketball");
+      viewerLabel = `${program.institution_name} ${gender} ${sport.charAt(0).toUpperCase()}${sport.slice(1)}`.replace(/\s+/g, " ").trim();
+    } else if (viewerRole === "admin") {
+      viewerLabel = "The Hub staff";
     }
+
+    // One view per viewer per athlete per 6 hours
+    const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+    const { data: recent } = await admin
+      .from("athlete_profile_views")
+      .select("id")
+      .eq("athlete_id", athleteId)
+      .eq("viewer_user_id", user.id)
+      .gte("created_at", since)
+      .limit(1);
+    if (recent && recent.length > 0) return skipped();
 
     const { error: insertError } = await admin.from("athlete_profile_views").insert({
       athlete_id: athleteId,

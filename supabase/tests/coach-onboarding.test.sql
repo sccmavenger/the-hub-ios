@@ -296,8 +296,11 @@ begin
   perform set_config('request.jwt.claim.sub', coach1::text, true);
   execute 'set local role authenticated';
   assert public.has_role('coach'), 'V10 approved coach has role';
+  -- Since 016 coaches never read the athletes table; the detail RPC is the path.
   select count(*) into n from public.athletes where id = athlete_id;
-  assert n = 1, 'V10 approved coach sees the published athlete';
+  assert n = 0, 'V10 coaches do not read the athletes table directly (016), saw ' || n;
+  j := public.coach_athlete_detail(prog_id, athlete_id);
+  assert (j -> 'athlete' ->> 'full_name') = 'Test Adult Athlete', 'V10 approved coach reads the published athlete via RPC';
   select count(*) into n from public.coach_program_memberships m join public.recruiting_programs p on p.id = m.program_id
     where m.coach_user_id = coach1 and m.status = 'verified' and p.verified_at is not null;
   assert n = 1, 'V11 coach can read own verified membership + program (CoachProgramService path)';
@@ -330,8 +333,11 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', coach1, 'role', 'authenticated')::text, true);
   perform set_config('request.jwt.claim.sub', coach1::text, true);
   execute 'set local role authenticated';
-  select count(*) into n from public.athletes;
-  assert n = 0, 'X4 suspended coach loses athlete access immediately';
+  err := null;
+  begin
+    j := public.coach_athlete_detail(prog_id, athlete_id);
+  exception when others then get stacked diagnostics err = message_text; end;
+  assert err = 'not authorized', 'X4 suspended coach loses athlete access immediately: ' || coalesce(err, '<none>');
   execute 'reset role';
 
   -- Reinstate → role back; inactivate → role gone + ended_at
