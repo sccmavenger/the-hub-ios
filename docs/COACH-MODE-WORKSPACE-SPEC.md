@@ -71,7 +71,7 @@ All 30 are inputs. Those that shape 2.0 most: D1–D3 media first and path-based
 | W7 | **Media fix in full in 2.0**: object paths stored, ~1-hour signed URLs issued at read time by an authorized RPC, images cached by path, storage policy checks the photo row not the folder, existing 10 photos backfilled by parsing their signed URLs and verifying each object. |
 | W8 | **Profile views: record detail-screen opens only**, deduped 6 h per coach per athlete (existing), labeled with the verified program, via the hardened edge function. Results impressions are not views. |
 
-## 2.3 Carried into 2.1 — confirm before 2.1 starts (Claude's recommendations)
+## 2.3 Carried into 2.1 — **confirmed by Danny 2026-10-01** (all four accepted as a package)
 - **No template system.** Pre-window coach sends are blocked and show the rule, source, and opening date. D14 permits "no exception offered."
 - **`needs_review` = allowed with a visible warning** (current Phase 1 policy; D15 "distinct").
 - **All coach sends go through one RPC** (`send_coach_message`) that evaluates, writes the audit row, and returns a structured denial *without raising*, so denied attempts persist (D29). The 013 trigger stays as the final guard for direct inserts.
