@@ -179,8 +179,8 @@ begin
   assert jsonb_array_length(j -> 'upcoming_events') = 1, 'B17 upcoming events';
   assert (j -> 'photos' -> 0 ->> 'storage_path') = photo_obj, 'B18 photo path';
   assert not (j -> 'photos' -> 0 ? 'url'), 'B18 no legacy url in coach payload';
-  -- Save (legacy table until 017) unlocks contact
-  insert into public.coach_saved_athletes (coach_user_id, athlete_id) values (coach2, ath_near);
+  -- Saving to the program board (017) unlocks contact
+  j := public.board_save_athlete(prog_a, ath_near);
   j := public.coach_athlete_detail(prog_a, ath_near);
   assert (j ->> 'contact_unlocked')::boolean and (j -> 'contact' ->> 'athlete_email') = 'near@cw-test.invalid', 'B19 contact after save';
   -- Unpublished / wrong gender / unknown → uniform 'not found'
@@ -227,13 +227,11 @@ begin
   assert n = 0, 'C4 blocked coach events hidden';
   select count(*) into n from storage.objects where bucket_id = 'athlete-media' and name = photo_obj;
   assert n = 0, 'C5 blocked coach storage hidden';
-  insert into public.coach_saved_athletes (coach_user_id, athlete_id) values (coach1, ath_far);  -- unrelated save still fine
-  -- even with a legacy save on the blocked athlete, contacts stay hidden
-  execute 'reset role';
-  insert into public.coach_saved_athletes (coach_user_id, athlete_id) values (coach1, ath_near);
-  execute 'set local role authenticated';
+  j := public.board_save_athlete(prog_a, ath_far);  -- unrelated save still fine
+  -- The program's board already holds Near Athlete (coach2 saved them above);
+  -- the blocked colleague still gets no contact details.
   select count(*) into n from public.athlete_contacts where athlete_id = ath_near;
-  assert n = 0, 'C6 blocked coach contacts hidden despite save';
+  assert n = 0, 'C6 blocked coach contacts hidden despite the program''s board entry';
   -- Blocked coach cannot message (guardian block now counts in the trigger)
   err := null;
   begin insert into public.messages (athlete_id, coach_user_id, sender_user_id, body) values (ath_near, coach1, coach1, 'hi');
@@ -343,6 +341,7 @@ begin
   perform set_config('storage.allow_delete_query', 'true', true);
   delete from storage.objects where bucket_id = 'athlete-media' and name like ath_near_user::text || '/%';
   perform set_config('storage.allow_delete_query', 'false', true);
+  delete from public.program_board_entries where program_id in (prog_a, prog_b);
   delete from auth.users where id in (admin_id, coach1, coach2, coach3, coach4, ath_near_user, ath_far_user, ath_unpub_user, ath_w_user, guardian_user);
   delete from public.recruiting_programs where id in (prog_a, prog_b);
 end $$;
