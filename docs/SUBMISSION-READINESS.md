@@ -404,6 +404,17 @@ What changed, in access terms:
   "tools are on the web" signpost. No placeholder tabs — Discover/Board/
   Messages wait for the Coach Workspace spec.
 
+## 2j. Version 1.3 prepared in App Store Connect — 2026-10-01
+
+Coach Mode 2.0 + 2.1 and the TestFlight-feedback fixes ship as **1.3 (build 3)**.
+The form was filled through the API and read back; the worksheet is
+`docs/APPSTORE-SUBMISSION-1.3.md`. Demo athlete + coach seeded with
+`scripts/seed-demo-accounts.py` (purge with `--purge` after approval).
+Social-media age-rating question answered Yes (TECH-DEBT #40). Release set to
+manual. Remaining before Add for Review: device test pass
+(`docs/COACH-MODE-TEST-CASES.md`), website legal copy (#13/#22), remove the
+Tony Stark test coach, and the adult-contact decision (#44).
+
 ## 3. Accepted risks / deferred (with reasons)
 
 > **⚠️ This section is a frozen pre-submission snapshot.** The living tracker

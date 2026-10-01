@@ -1,12 +1,21 @@
 # App Store Connect — Version 1.3 submission worksheet
 
 **Use this file every time we touch the 1.3 submission form.** It lists what
-App Store Connect holds right now, the value to paste for each field, and the
-blanks only Danny can fill. Fields marked **FILL IN** are blank or wrong on
-Apple's side today. Fields marked **KEEP** need no change.
+App Store Connect holds, the value for each field, and the decisions behind
+them.
 
-Snapshot pulled live from the App Store Connect API on **2026-10-01, 11:50 CDT**
-(`scripts/asc.py`). Re-pull before submitting:
+> **STATUS 2026-10-01 14:05 CDT — form filled via the API** (`scripts/asc-apply-1.3.py`,
+> verified by read-back): promotional text, description, What's New, review
+> notes, demo athlete credentials, manual release, and the social-media age
+> rating answer (Yes) are all set. Demo athlete + coach seeded with
+> `scripts/seed-demo-accounts.py` (credentials in `.secrets/demo-accounts.json`).
+> Build 3 is attached and contains every fix in `6de0b75` (archived 11:45 CDT,
+> after the last source change at 11:33). **Remaining before "Add for Review":**
+> gates G2 (device pass), G5 (website legal copy), G6 (Tony Stark), G8
+> (adult-contact decision). After approval: `scripts/seed-demo-accounts.py --purge`.
+
+The original "FILL IN / KEEP" markers below are kept as the record of what
+changed. Snapshot first pulled **2026-10-01, 11:50 CDT**. Re-pull any time:
 
 ```bash
 python3 scripts/asc.py get "appStoreVersions/5d7d0a83-d7fc-4eed-9c83-29b60b386ad9?include=appStoreVersionLocalizations,build,appStoreReviewDetail"
@@ -31,10 +40,10 @@ source for anything not mentioned here.
 
 | # | Gate | Owner | Status |
 |---|------|-------|--------|
-| G1 | **Build 3 contains the TestFlight-feedback fixes.** Build 3 was uploaded at 11:48 CDT; the fixes commit (`6de0b75`) landed at 11:38 CDT from the same working tree, so it very likely does — confirm in Xcode → Organizer → the build 3 archive → commit, or just upload **build 4** from `c831e2c` and attach that instead. | Danny | ☐ |
+| G1 | **Build 3 contains the TestFlight-feedback fixes.** Verified: the build 3 archive (`~/Library/Developer/Xcode/Archives/2026-10-01/TheHub 10-1-26, 11.45 AM.xcarchive`) was created 11:45:51 CDT; the last fix file was saved 11:33:05 CDT. | Claude | ☑ |
 | G2 | Device test pass per `docs/COACH-MODE-TEST-CASES.md` (at minimum groups C, F, G, H). | Danny | ☐ |
-| G3 | Demo **athlete** and demo **coach** accounts seeded (§4 below). TECH-DEBT #18/#29. | Danny + Claude | ☐ |
-| G4 | Social-media age-rating answer decided (§3). TECH-DEBT #40. | Danny | ☐ |
+| G3 | Demo **athlete** and demo **coach** accounts seeded (§4 below). TECH-DEBT #18/#29. | Claude | ☑ 2026-10-01 |
+| G4 | Social-media age-rating answer decided (§3). TECH-DEBT #40. | Claude (recommendation applied; Danny may flip) | ☑ Yes |
 | G5 | Website `/terms` and `/privacy` on Lovable carry the 2026-09-30 and 2026-10-01 text from `docs/legal/`. TECH-DEBT #13/#22. Apple's reviewers do open the privacy URL. | Danny (Lovable) | ☐ |
 | G6 | Delete or re-key the `tstark@mailinator.com` test coach (public inbox). | Claude, on Danny's go | ☐ |
 | G7 | `college_logos_enabled` is still **false** (it is, verified 2026-10-01) so the Content Rights answer stays valid. | — | ☑ |
@@ -139,45 +148,43 @@ re-check production before anyone downloads it.
 | Field | Current | Set to |
 |---|---|---|
 | Sign-in required | Yes | Yes (KEEP) |
-| Demo account username | **empty** | demo athlete email from §4: `________________________` |
-| Demo account password | **empty** | `________________________` |
+| Demo account username | **empty** → set | `apple.review.athlete@summithoops.example` |
+| Demo account password | **empty** → set | in `.secrets/demo-accounts.json` (never in chat or git) |
 | Contact first / last name | Danny / Guillory Jr | KEEP |
 | Contact phone | +1 636-362-4590 | KEEP |
 | Contact email | dguilloryjr@msn.com | KEEP |
 | Attachment | none | optional: a 30–60 s screen recording of the coach flow (sign in as demo coach → Discover → save → message) saves a round-trip if the reviewer can't reach Coach Mode |
 
-### Review Notes — **REPLACE** (current notes say coach onboarding is web-only and that there is only one account type — both now false)
+### Review Notes — **REPLACED 2026-10-01** (the 1.2 notes said coach onboarding was web-only and that there was one account type — both false in 1.3)
 
-Paste exactly; replace the two bracketed coach credentials with the §4 values.
+Apple's limit is 4,000 characters; this text is ~3,630 with credentials. The
+coach credentials are substituted from `.secrets/demo-accounts.json` by
+`scripts/asc-apply-1.3.py`, which holds this same text.
 
 ```
-The Hub is a recruiting profile platform for high school basketball players, most of whom are minors. Key context for review:
+The Hub is a free recruiting-profile platform for US high school basketball players (ages 13-18), their parents, and the college coaches who recruit them. Key context:
 
-1. Sign-in is required. The demo account above is a fully populated ATHLETE profile with fictitious data. A second demo account lets you see the coach side: COACH username [demo coach email], password [demo coach password]. Both are created fresh for each submission; the passwords always work.
+1. Sign-in is required. The demo account above is a fully populated ATHLETE (fictitious data). To see the coach side: COACH username [demo coach email], password [demo coach password]. Both accounts are created fresh for each submission; the passwords always work.
 
-2. Minor safety: publishing a profile requires a date of birth, and any athlete under 18 must have recorded parent/guardian consent (name, email, timestamp) before the profile can be published. This is enforced in the database, not just the UI. A coach never receives an under-18 athlete's own phone number or email; only guardian or club-coach contact details the family chose to list become visible, and only after the coach has saved the athlete to their program's board. Coaches never receive an athlete's date of birth, test scores, NCAA ID, exact location, or guardian consent details.
+2. Minor safety: publishing requires a date of birth, and any athlete under 18 must have recorded parent/guardian consent (name, email, timestamp) before the profile can be published - enforced in the database, not just the UI. A coach never receives an under-18 athlete's own phone or email; only guardian or club-coach details the family chose to list become visible, and only after the coach saves the athlete to their program's board. Coaches never receive date of birth, test scores, NCAA ID, exact location, or consent details.
 
-3. Coach accounts cannot self-activate. A college coach can create an account in this app, but doing so only files an application; the coach signs in to a status screen with no athlete content until our staff manually verifies their affiliation with a specific college basketball program and approves it. Only then does the account receive the coach role (enforced in the database). An approved coach can search published athlete profiles for their program's sport and gender, view them, save them to the program's shared recruiting board, set alerts on saved searches, and message athletes. The athlete and their guardian are notified of saves, views, and messages with the program's name. Blocking a coach removes the athlete from that coach's results, board, and messages everywhere.
+3. Coach accounts cannot self-activate. Creating a coach account in the app only files an application; the coach sees a status screen with no athlete content until our staff manually verifies their affiliation with a specific college program and approves it. Only then does the account receive the coach role (enforced in the database). An approved coach can search published athletes for their program's sport and gender, save them to the program's shared recruiting board, set alerts on saved searches, and message them. Athletes and guardians are notified of saves, views, and messages with the program's name. Blocking a coach removes the athlete from that coach's results, board, and messages everywhere.
 
-4. Recruiting-rule enforcement: before a coach's message is sent, the server evaluates it against the official NCAA recruiting calendar for the athlete's class year and the coach's verified program (sources are shown in-app with bylaw references and dates). A message that the rules prohibit is refused and the coach is shown the rule and the date it opens. Athletes may always message a coach first.
+4. Recruiting-rule enforcement: before a coach's message sends, the server checks it against the official NCAA recruiting calendar for the athlete's class year and the coach's verified program (sources shown in-app with bylaw references and dates). A prohibited message is refused and the coach sees the rule and the date it opens. Athletes may always message a coach first.
 
-5. User-generated content (photos, bios, messages) is moderated by our admin team. Every conversation has in-app Report and Block actions; reports notify all administrators and are reviewed within 24 hours.
+5. User-generated content (photos, bios, messages) is moderated by our admin team. Every conversation has in-app Report and Block; reports notify all administrators and are reviewed within 24 hours.
 
-6. Account deletion is available in-app at More > Account > Delete Account (athletes) and Program > Account > Delete Account (coaches). It permanently removes the profile, photos, messages, consent records, and the login itself.
+6. Account deletion is in-app: More > Account > Delete Account (athletes), Program > Account > Delete Account (coaches). It removes the profile, photos, messages, consent records, and the login.
 
-7. Athletes under 13 cannot create an account; the sign-up flow blocks them and directs them to have a parent or guardian create and manage the profile instead.
+7. Athletes under 13 cannot create an account; sign-up blocks them and directs a parent or guardian to create and manage the profile.
 
 --- Background previously requested by App Review (Guideline 2.1) ---
 
-8. Purpose and audience: The Hub is a free recruiting-profile app for US high school basketball players (roughly ages 13-18), their parents, and the college coaches who recruit them. Recruiting exposure is normally scattered across social media, email, and paid showcase services; The Hub gives an athlete a single profile that individually approved college coaches can view, save, and message, and shows the family that activity as it happens.
+8. Setup: sign in with the athlete demo above. Athlete tabs: Home (activity, notification bell), Profile (edit, preview, publish, .ics schedule import), Colleges, Messages (Report and Block in every thread), More (NCAA Journey, Insights, Account, legal). Coach tabs (credentials in item 1): Home, Discover, Board, Messages, Program. New accounts need a working email for the confirmation link.
 
-9. Setup and access: sign in with the athlete demo credentials above. Athlete tabs: Home (recruiting activity, notification bell), Profile (edit, preview, publish, schedule import), Colleges (target-school list and recruiting status), Messages (coach conversations, each with Report and Block), More (NCAA Journey, Insights, Account, legal). Coach tabs (demo coach credentials in item 1): Home, Discover, Board, Messages, Program. Creating a new account requires a working email address for a confirmation link.
+9. External services: Supabase (auth, Postgres, scheduled jobs, private file storage); Resend (transactional email); zippopotam.us (public ZIP-to-city lookup; only the ZIP is sent). No payments, ads, analytics SDKs, AI services, or push notifications (notifications are in-app only).
 
-10. External services: Supabase (supabase.com) - authentication, Postgres database, scheduled jobs, and private file storage; Resend (resend.com) - transactional email (sign-up confirmation, password reset); zippopotam.us - public ZIP-to-city/state lookup used to derive coarse map coordinates (only the ZIP code is transmitted). No payment processors, no advertising, no analytics SDKs, no AI services, no push-notification service (notifications are in-app only).
-
-11. Regional differences: none. The app is distributed in the United States only and behaves identically everywhere it is available.
-
-12. The app does not operate in a regulated industry and contains no protected third-party material; college crests are rendered as generic letter monograms, not school logos. NCAA rule text shown in-app is our own plain-English summary with a link to the NCAA's published manual.
+10. Distributed in the United States only; no regional differences. Not a regulated industry. No third-party protected material: college crests are generic letter monograms, and NCAA rule text is our own plain-English summary linking to the NCAA's published manual.
 ```
 
 ---
@@ -216,23 +223,30 @@ admin-verified program membership.
   tool rather than social media. Defensible, but it is the answer a reviewer
   is most likely to challenge now that Discover exists.
 
-Record the final answer and date here: `________________________`
+**Recorded 2026-10-01:** `socialMedia = true`, `socialMediaAgeRestricted = false`
+(the age-restricted option requires adopting Apple's Declared Age Range API,
+which the app does not do), override stays 13+. Applied via API. Sources for
+Apple's definition: [Apple Developer News](https://developer.apple.com/news/?id=tlur8uvi),
+[9to5Mac, 2026-07-09](https://9to5mac.com/2026/07/09/apple-adds-social-media-questions-to-app-store-connect-age-rating-questionnaire/).
+Consequence: the product page shows a Social Media descriptor and iOS 27 Time
+Allowances files the app under Social Media. Flip back to `false` only if we
+decide a vetted, adults-only search isn't "discovery" in Apple's sense.
 
 ---
 
-## 4. Demo accounts (seed before filling §2) — **FILL IN**
+## 4. Demo accounts — **SEEDED 2026-10-01** (`scripts/seed-demo-accounts.py`)
 
-Both must be fictitious, email-confirmed, and work with the password written in
-§2. Use the admin account to approve the coach. Recipe: SUBMISSION-READINESS §2g
-for the athlete; for the coach, sign up in-app as College Coach, then approve
-from Coaches tab → detail → Approve into a **new** fictitious program (e.g.
-"Summit State University", NCAA D1, men's). Purge both after approval (we did
-this for 1.2; see §2h).
+Re-runnable; `--purge` removes both accounts, their storage objects, the
+fictitious program, and the credentials file after approval (§2h precedent).
 
-| Account | Email | Password | Notes |
+| Account | Email | Password | What's in it |
 |---|---|---|---|
-| Demo athlete | `________________________` | `________________________` | published, men's, DOB making them 16–17 **with** guardian consent recorded, photos, 2+ upcoming games, a target school, contact info with a guardian listed |
-| Demo coach | `________________________` | `________________________` | approved into a fictitious men's D1 program; save the demo athlete so the board and contact card have content; send one message (the 2028+ grad athlete will be blocked by the D1 rule — pick a demo grad year of **2027** if you want the reviewer to see a send succeed, or keep the block to demonstrate enforcement) |
+| Demo athlete | `apple.review.athlete@summithoops.example` | `.secrets/demo-accounts.json` | "Jalen Brooks", men's, PG, class of 2027, DOB 2009-02-14 (17, so consent + contact redaction show), guardian consent recorded, profile photo + 4 gallery cards, 4 upcoming games (one MAYB), 3 target schools, NCAA readiness, contacts with guardian + club coach, 6 profile views, published |
+| Demo coach | `apple.review.coach@summithoops.example` | `.secrets/demo-accounts.json` | "Casey Morgan", Head Coach, approved into the fictitious **Summit State University** (NCAA D1 men's); athlete saved to the board at Evaluating; one thread: athlete wrote first, coach replied through the rules-checked RPC (send succeeded — a 2027 grad is past the June 15 opening) |
+
+Both sign-ins verified by password grant at seed time. Why a 2027 minor: the
+reviewer sees consent, redaction, and a successful rules-checked send in one
+account pair.
 
 Why a minor demo athlete: it demonstrates the consent record and the contact
 redaction the review notes describe. Why not reuse Tony Stark: public
@@ -302,4 +316,5 @@ Never paste the demo passwords into chat for the API route; put them in
 | Date | Action | By | Result |
 |---|---|---|---|
 | 2026-10-01 | 1.3 version created in ASC; build 3 attached; metadata copied from 1.2 (review notes still web-only wording) | Danny | prepare for submission |
+| 2026-10-01 | Demo athlete + coach seeded (`scripts/seed-demo-accounts.py`); promotional text, description, What's New, review notes + demo credentials, manual release, social-media = Yes applied via `scripts/asc-apply-1.3.py`; read-back verified | Claude | ready pending gates G2, G5, G6, G8 |
 | | | | |
