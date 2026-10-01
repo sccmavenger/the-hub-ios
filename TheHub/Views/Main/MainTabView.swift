@@ -93,6 +93,11 @@ private struct CoachTabView: View {
             }
             .tabItem { Label("Home", systemImage: "house") }
 
+            NavigationStack {
+                CoachDiscoverView()
+            }
+            .tabItem { Label("Discover", systemImage: "magnifyingglass") }
+
             MoreView()
                 .tabItem { Label("More", systemImage: "ellipsis") }
         }

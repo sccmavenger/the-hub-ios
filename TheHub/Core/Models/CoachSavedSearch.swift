@@ -3,8 +3,8 @@ import Foundation
 /// Discover filters (spec §8.1 / D19). Persisted verbatim as
 /// `coach_saved_searches.filters` and encoded 1:1 to the search RPC's
 /// parameters by `CoachWorkspaceService`.
-nonisolated struct DiscoverFilters: Codable, Equatable, Sendable {
-    nonisolated enum PlayingWindow: String, Codable, CaseIterable, Sendable {
+nonisolated struct DiscoverFilters: Codable, Hashable, Sendable {
+    nonisolated enum PlayingWindow: String, Codable, CaseIterable, Hashable, Sendable {
         case weekend
         case next7Days = "7d"
         case next30Days = "30d"
@@ -60,6 +60,20 @@ nonisolated struct DiscoverFilters: Codable, Equatable, Sendable {
     var activeCount: Int {
         [!(query ?? "").isEmpty, !positions.isEmpty, !gradYears.isEmpty, hasRadius || !states.isEmpty,
          minHeightInches != nil, minGpa != nil, playingWithin != nil].filter { $0 }.count
+    }
+
+    /// One short chip per active filter group (saved-search rows, active-filter bar).
+    var chipLabels: [String] {
+        var chips: [String] = []
+        if let query, !query.isEmpty { chips.append("“\(query)”") }
+        if !positions.isEmpty { chips.append(positions.joined(separator: ", ")) }
+        if !gradYears.isEmpty { chips.append(gradYears.sorted().map { "'\(String($0).suffix(2))" }.joined(separator: " ")) }
+        if hasRadius, let radiusMiles { chips.append("\(radiusMiles) mi of \(zipCode ?? "ZIP")") }
+        else if !states.isEmpty { chips.append(states.joined(separator: ", ")) }
+        if let minHeightInches { chips.append("≥ \(minHeightInches / 12)'\(minHeightInches % 12)\"") }
+        if let minGpa { chips.append("GPA ≥ \(minGpa.formatted(.number.precision(.fractionLength(0...2))))") }
+        if let playingWithin { chips.append(playingWithin.displayName) }
+        return chips
     }
 }
 

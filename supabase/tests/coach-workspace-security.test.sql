@@ -183,6 +183,12 @@ begin
   j := public.board_save_athlete(prog_a, ath_near);
   j := public.coach_athlete_detail(prog_a, ath_near);
   assert (j ->> 'contact_unlocked')::boolean and (j -> 'contact' ->> 'athlete_email') = 'near@cw-test.invalid', 'B19 contact after save';
+  -- 018: search items carry board_stage + next_event_date
+  j := public.search_published_athletes(prog_a, p_query => 'near');
+  assert (j -> 'items' -> 0 ->> 'board_stage') = 'watching', 'B19b board_stage in search: ' || coalesce(j -> 'items' -> 0 ->> 'board_stage', '<null>');
+  assert (j -> 'items' -> 0 ->> 'next_event_date')::date = current_date + 3, 'B19b next_event_date in search';
+  j := public.search_published_athletes(prog_a, p_query => 'far');
+  assert j -> 'items' -> 0 -> 'board_stage' = 'null'::jsonb, 'B19c unsaved athlete has null board_stage';
   -- Unpublished / wrong gender / unknown → uniform 'not found'
   err := null; begin j := public.coach_athlete_detail(prog_a, ath_unpub); exception when others then get stacked diagnostics err = message_text; end;
   assert err = 'not found', 'B20 unpublished → not found';

@@ -28,8 +28,16 @@ nonisolated struct CoachAthleteCard: Codable, Identifiable, Equatable, Sendable 
     var isPublished: Bool
     /// Rounded to the nearest 5 miles by the server; nil without a search center.
     var distanceMiles: Int?
+    /// Discover only (018): the program's active board stage for this athlete.
+    var boardStage: String?
+    /// Discover only (018): next event on/after today, ISO date.
+    var nextEventDate: String?
 
     var id: String { athleteId }
+
+    var boardPipelineStage: PipelineStage? {
+        boardStage.flatMap(PipelineStage.init(rawValue:))
+    }
 
     enum CodingKeys: String, CodingKey {
         case athleteId = "athlete_id"
@@ -49,6 +57,8 @@ nonisolated struct CoachAthleteCard: Codable, Identifiable, Equatable, Sendable 
         case sportGender = "sport_gender"
         case isPublished = "is_published"
         case distanceMiles = "distance_miles"
+        case boardStage = "board_stage"
+        case nextEventDate = "next_event_date"
     }
 
     var heightDisplay: String? {

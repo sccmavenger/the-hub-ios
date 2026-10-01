@@ -24,6 +24,31 @@ struct CoachWorkspaceTests {
         #expect(card.classLabel == "Class of 2027")
         #expect(card.schoolLine == "CW High · St. Louis, MO")
         #expect(card.distanceMiles == 25)
+        #expect(card.boardPipelineStage == nil)
+    }
+
+    @Test("Discover items decode the 018 board stage and next event date")
+    func cardBoardStage() throws {
+        let json = Self.cardJSON.replacingOccurrences(of: "\"distance_miles\":25}", with: "\"distance_miles\":25,\"board_stage\":\"evaluating\",\"next_event_date\":\"2026-10-04\"}")
+        let card = try JSONDecoder().decode(CoachAthleteCard.self, from: Data(json.utf8))
+        #expect(card.boardPipelineStage == .evaluating)
+        #expect(card.nextEventDate == "2026-10-04")
+    }
+
+    @Test("Filter chips summarize each active group")
+    func filterChips() {
+        var f = DiscoverFilters()
+        #expect(f.chipLabels.isEmpty)
+        f.gradYears = [2028, 2027]
+        f.positions = ["Guard"]
+        f.zipCode = "63101"; f.centerLat = 1; f.centerLng = 1; f.radiusMiles = 100
+        f.minHeightInches = 74
+        f.minGpa = 3.5
+        f.playingWithin = .weekend
+        #expect(f.chipLabels == ["Guard", "'27 '28", "100 mi of 63101", "≥ 6'2\"", "GPA ≥ 3.5", "This weekend"])
+        f.radiusMiles = nil
+        f.states = ["MO", "IL"]
+        #expect(f.chipLabels.contains("MO, IL"), "states shown when no radius")
     }
 
     @Test("Search page decodes items, total and an opaque cursor")

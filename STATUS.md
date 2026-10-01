@@ -228,7 +228,14 @@ backend: `supabase/014-coach-onboarding.sql`; tests:
     RPCs, private notes, contact unlock keyed on the board, "Saved by" names the program;
     iOS program selection (persisted, switcher required when >1 program), `CoachWorkspaceService`
     + models for every coach RPC. Coach still sees Home + More; 2C adds Discover.
-  - Next: 2C (Discover, athlete detail in coach mode, saved searches) after Danny's gate.
+  - **2C done 2026-10-01** (migration 018 applied): **Discover tab** — server-side search
+    with name, position, class, ZIP+radius or states, height, GPA, playing-window filters;
+    saved searches (alerts toggle disabled until 2.1); coach athlete detail with photos,
+    videos, 30-day schedule, Save to Recruiting Board, stage menu, contact card locked until
+    the program saves the athlete, report; detail opens record a profile view labeled with
+    the verified program. Coach now sees Home · Discover · More.
+  - Next: 2D (Board tab, Home counts/activity, Program tab with staff + switcher) after
+    Danny's gate.
 
 ## Tech Decisions Made
 - **iOS 17+ only** — uses `@Observable` macro, no Combine
