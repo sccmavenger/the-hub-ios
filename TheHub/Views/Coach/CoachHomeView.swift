@@ -1,13 +1,13 @@
 import SwiftUI
 import Auth
 
-/// Coach Mode, Phase 1: the verified program the coach operates under and a
-/// stable entry point for the Coach Workspace (discovery, board, messaging)
-/// that the next spec adds. Only reachable with the `coach` role, which the
-/// server derives from a verified membership.
+/// Coach Mode Home (Phase 2B shape): the selected verified program, a switcher
+/// when the coach holds several, and the account entry. 2D adds the board
+/// counts, assigned-to-me tile and recent activity from `coach_home_summary`.
 struct CoachHomeView: View {
     @Environment(AuthViewModel.self) private var authViewModel
     @State private var programs = CoachProgramService.shared
+    @State private var showSwitcher = false
 
     private var userId: String? {
         authViewModel.session?.user.id.uuidString
@@ -26,12 +26,26 @@ struct CoachHomeView: View {
                     case .failed:
                         retryCard("Couldn't load your program.")
                     case .loaded(let contexts):
-                        if contexts.isEmpty {
+                        if let selected = programs.selectedContext {
+                            ProgramCardView(context: selected, isCurrent: true)
+                            if programs.canSwitch {
+                                Button {
+                                    showSwitcher = true
+                                } label: {
+                                    Label("Switch program (\(contexts.count) verified)", systemImage: "arrow.left.arrow.right")
+                                        .font(.subheadline.bold())
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 44)
+                                }
+                                .background(Color.hubSurface)
+                                .foregroundStyle(Color.hubPrimary)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                        } else if contexts.isEmpty {
                             retryCard("Your verified program isn't available yet. Pull to refresh in a moment.")
                         } else {
-                            ForEach(contexts) { context in
-                                programCard(context, isCurrent: context.id == programs.currentContext?.id)
-                            }
+                            // Several programs, none chosen: the tab view presents the switcher.
+                            ProgressView().tint(Color.hubPrimary).padding(.vertical, 24)
                         }
                     }
                     rulesCard
@@ -46,9 +60,11 @@ struct CoachHomeView: View {
         }
         .navigationTitle("Coach Home")
         .navigationBarTitleDisplayMode(.large)
-        .task(id: userId) {
-            guard let userId else { return }
-            await programs.refresh(coachUserId: userId)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) { CoachProgramChip() }
+        }
+        .sheet(isPresented: $showSwitcher) {
+            CoachProgramSwitcherView()
         }
     }
 
@@ -67,50 +83,6 @@ struct CoachHomeView: View {
             }
             Spacer()
         }
-        .padding(16)
-        .background(Color.hubSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-    }
-
-    private func programCard(_ context: CoachProgramContext, isCurrent: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(isCurrent ? "Your program" : "Also verified")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(Color.hubTextSecondary)
-                Spacer()
-                Text("Verified")
-                    .font(.caption2.bold())
-                    .foregroundStyle(Color.hubSuccess)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Color.hubSuccess.opacity(0.15))
-                    .clipShape(Capsule())
-            }
-            Text(context.institutionName)
-                .font(.title3.bold())
-                .foregroundStyle(.white)
-            Text(context.programLabel)
-                .foregroundStyle(.white)
-            if let division = context.divisionLabel {
-                Text(division)
-                    .foregroundStyle(Color.hubTextSecondary)
-            }
-            let role = [context.title, context.roleDisplayName].compactMap { $0 }.joined(separator: " · ")
-            if !role.isEmpty {
-                Text(role)
-                    .font(.subheadline)
-                    .foregroundStyle(Color.hubTextSecondary)
-                    .padding(.top, 2)
-            }
-            if let verified = context.verifiedAt {
-                Text("Verified \(verified.asFormattedDate(style: .long))")
-                    .font(.caption)
-                    .foregroundStyle(Color.hubTextSecondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background(Color.hubSurface)
         .clipShape(RoundedRectangle(cornerRadius: 14))
@@ -176,6 +148,56 @@ struct CoachHomeView: View {
             .foregroundStyle(Color.hubPrimary)
         }
         .frame(maxWidth: .infinity)
+        .padding(16)
+        .background(Color.hubSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+}
+
+/// Verified program card shared by Home, the Program tab and the switcher.
+struct ProgramCardView: View {
+    let context: CoachProgramContext
+    var isCurrent = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(isCurrent ? "Your program" : "Also verified")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(Color.hubTextSecondary)
+                Spacer()
+                Text("Verified")
+                    .font(.caption2.bold())
+                    .foregroundStyle(Color.hubSuccess)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.hubSuccess.opacity(0.15))
+                    .clipShape(Capsule())
+            }
+            Text(context.institutionName)
+                .font(.title3.bold())
+                .foregroundStyle(.white)
+            Text(context.programLabel)
+                .foregroundStyle(.white)
+            if let division = context.divisionLabel {
+                Text(division)
+                    .foregroundStyle(Color.hubTextSecondary)
+            }
+            let role = [context.title, context.roleDisplayName].compactMap { $0 }.joined(separator: " · ")
+            if !role.isEmpty {
+                Text(role)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.hubTextSecondary)
+                    .padding(.top, 2)
+            }
+            if let verified = context.verifiedAt {
+                Text("Verified \(verified.asFormattedDate(style: .long))")
+                    .font(.caption)
+                    .foregroundStyle(Color.hubTextSecondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background(Color.hubSurface)
         .clipShape(RoundedRectangle(cornerRadius: 14))

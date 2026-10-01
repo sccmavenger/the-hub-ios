@@ -224,7 +224,11 @@ backend: `supabase/014-coach-onboarding.sql`; tests:
     through allowlisted RPCs scoped to a verified program; blocks apply to every coach read;
     admin role exclusive; interest notifications by membership. TECH-DEBT #6/#9/#32/#33/#34/#36/#37
     closed. ⚠️ Until 2C ships Discover, an approved coach's app shows the program card only.
-  - Next: 2B (program switcher, board data layer, migration 017) after Danny's gate.
+  - **2B done 2026-10-01** (migration 017 applied): program-owned Recruiting Board tables +
+    RPCs, private notes, contact unlock keyed on the board, "Saved by" names the program;
+    iOS program selection (persisted, switcher required when >1 program), `CoachWorkspaceService`
+    + models for every coach RPC. Coach still sees Home + More; 2C adds Discover.
+  - Next: 2C (Discover, athlete detail in coach mode, saved searches) after Danny's gate.
 
 ## Tech Decisions Made
 - **iOS 17+ only** — uses `@Observable` macro, no Combine

@@ -79,6 +79,13 @@ private struct AthleteTabView: View {
 /// More screen. No placeholder tabs — the Coach Workspace spec adds
 /// Discover / Recruiting Board / Messages / Program on top of this entry point.
 private struct CoachTabView: View {
+    @Environment(AuthViewModel.self) private var authViewModel
+    @State private var programs = CoachProgramService.shared
+
+    private var userId: String? {
+        authViewModel.session?.user.id.uuidString
+    }
+
     var body: some View {
         TabView {
             NavigationStack {
@@ -90,6 +97,20 @@ private struct CoachTabView: View {
                 .tabItem { Label("More", systemImage: "ellipsis") }
         }
         .tint(Color.hubPrimary)
+        // Program contexts load once here; every coach screen reads
+        // `CoachProgramService.shared.selectedContext`.
+        .task(id: userId) {
+            guard let userId else { return }
+            await programs.refresh(coachUserId: userId)
+        }
+        // A multi-program coach with no valid stored choice must pick before
+        // any program-scoped screen loads (D16): modal, not dismissable.
+        .sheet(isPresented: Binding(
+            get: { programs.needsProgramChoice },
+            set: { _ in }
+        )) {
+            CoachProgramSwitcherView(isDismissable: false)
+        }
     }
 }
 

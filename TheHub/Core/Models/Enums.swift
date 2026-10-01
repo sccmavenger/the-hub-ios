@@ -85,7 +85,8 @@ nonisolated enum GoverningBody: String, Codable, CaseIterable, Identifiable, Sen
     }
 }
 
-enum PipelineStage: String, Codable, CaseIterable {
+/// Board stages. Raw values mirror the `program_board_entries.stage` check (017).
+nonisolated enum PipelineStage: String, Codable, CaseIterable, Sendable {
     case watching
     case evaluating
     case contacted
