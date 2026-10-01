@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Personal, program-scoped saved Discover filters (spec §8.5, D27). Alerts
-/// (D13) arrive in 2.1; the toggle is shown disabled so coaches know it's coming.
+/// Personal, program-scoped saved Discover filters (spec §8.5, D27) with the
+/// per-search alerts opt-in (D13): an hourly server job notifies about
+/// athletes newly matching, deduped against what the coach has already seen.
 struct SavedSearchesView: View {
     @Environment(\.dismiss) private var dismiss
     let programId: String
@@ -50,28 +51,36 @@ struct SavedSearchesView: View {
                                 .listRowBackground(Color.hubSurface)
                         }
                         ForEach(searches) { saved in
-                            Button {
-                                onRun(saved)
-                                dismiss()
-                            } label: {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(saved.name)
-                                        .font(.headline)
-                                        .foregroundStyle(.white)
-                                    Text(saved.filters.chipLabels.isEmpty ? "All athletes" : saved.filters.chipLabels.joined(separator: " · "))
-                                        .font(.caption)
-                                        .foregroundStyle(Color.hubTextSecondary)
-                                        .lineLimit(2)
-                                    Toggle(isOn: .constant(false)) {
-                                        Text("Alerts — arrive in the next update")
+                            VStack(alignment: .leading, spacing: 6) {
+                                Button {
+                                    onRun(saved)
+                                    dismiss()
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(saved.name)
+                                            .font(.headline)
+                                            .foregroundStyle(.white)
+                                        Text(saved.filters.chipLabels.isEmpty ? "All athletes" : saved.filters.chipLabels.joined(separator: " · "))
                                             .font(.caption)
                                             .foregroundStyle(Color.hubTextSecondary)
+                                            .lineLimit(2)
                                     }
-                                    .disabled(true)
-                                    .tint(Color.hubPrimary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(Rectangle())
                                 }
-                                .padding(.vertical, 2)
+                                .buttonStyle(.plain)
+
+                                Toggle(isOn: Binding(
+                                    get: { saved.alertsEnabled },
+                                    set: { enabled in Task { await setAlerts(saved, enabled: enabled) } }
+                                )) {
+                                    Text(saved.alertsEnabled ? "Alerting hourly on new matches" : "Alert me about new matches")
+                                        .font(.caption)
+                                        .foregroundStyle(Color.hubTextSecondary)
+                                }
+                                .tint(Color.hubPrimary)
                             }
+                            .padding(.vertical, 2)
                             .listRowBackground(Color.hubSurface)
                             .swipeActions(edge: .trailing) {
                                 Button(role: .destructive) {
@@ -160,6 +169,19 @@ struct SavedSearchesView: View {
             }
         } catch {
             errorMessage = "Couldn't rename the search."
+        }
+    }
+
+    private func setAlerts(_ saved: CoachSavedSearch, enabled: Bool) async {
+        guard let index = searches.firstIndex(where: { $0.id == saved.id }) else { return }
+        let previous = searches[index].alertsEnabled
+        searches[index].alertsEnabled = enabled
+        do {
+            try await CoachWorkspaceService.shared.setSavedSearchAlerts(id: saved.id, enabled: enabled)
+            errorMessage = nil
+        } catch {
+            searches[index].alertsEnabled = previous
+            errorMessage = "Couldn't update alerts for “\(saved.name)”."
         }
     }
 

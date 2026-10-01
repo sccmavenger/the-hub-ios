@@ -54,10 +54,55 @@ struct CoachHomeView: View {
         .navigationTitle("Coach Home")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) { CoachProgramChip() }
+            ToolbarItem(placement: .topBarLeading) { CoachProgramChip() }
+            ToolbarItem(placement: .topBarTrailing) {
+                NotificationBellButton { notification in
+                    open(notification)
+                }
+            }
         }
         .task(id: programId) { await loadSummary() }
         .sheet(isPresented: $showSwitcher) { CoachProgramSwitcherView() }
+        .navigationDestination(item: $routedAthlete) { route in
+            switch route.kind {
+            case .detail: CoachAthleteDetailView(athleteId: route.athleteId)
+            case .thread: CoachThreadLoaderView(athleteId: route.athleteId)
+            }
+        }
+    }
+
+    // MARK: - Notification routing (spec §14, D28)
+
+    private struct RoutedAthlete: Hashable {
+        enum Kind { case detail, thread }
+        let athleteId: String
+        let kind: Kind
+    }
+
+    @State private var routedAthlete: RoutedAthlete?
+
+    private func open(_ notification: AppNotification) {
+        switch notification.destination {
+        case .athlete(let athleteId):
+            routedAthlete = RoutedAthlete(athleteId: athleteId, kind: .detail)
+        case .thread(let athleteId, _):
+            routedAthlete = RoutedAthlete(athleteId: athleteId, kind: .thread)
+        case .messages:
+            tabSelection = .messages
+        case .discover:
+            tabSelection = .discover
+        case .savedSearch(let id, let savedProgramId):
+            // The alert belongs to a specific program; switch if it isn't current.
+            if let savedProgramId, savedProgramId != programId,
+               case .loaded(let contexts) = programs.load,
+               let context = contexts.first(where: { $0.programId == savedProgramId }) {
+                programs.select(context)
+            }
+            NotificationRouter.shared.pendingSavedSearchId = id
+            tabSelection = .discover
+        default:
+            break
+        }
     }
 
     // MARK: - Sections

@@ -82,6 +82,7 @@ final class AuthViewModel {
         currentRoles = []
         coachRequestLoad = .notLoaded
         CoachProgramService.shared.clear()
+        NotificationService.shared.reset()
     }
 
     /// After an RPC returned the updated application (edit, withdraw), adopt it

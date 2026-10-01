@@ -14,6 +14,8 @@ struct AccountView: View {
     @State private var isDeleting = false
     @State private var errorMessage: String?
     @State private var legalDocument: LegalDocument?
+    @State private var settings = UserSettingsService.shared
+    @State private var settingsError: String?
 
     var body: some View {
         ZStack {
@@ -22,6 +24,7 @@ struct AccountView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     accountCard
+                    notificationsCard
                     blockedPeopleCard
                     legalCard
                     deleteCard
@@ -33,6 +36,9 @@ struct AccountView: View {
         .navigationTitle("Account")
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadBlocks() }
+        .task(id: userId) {
+            if let userId { await settings.load(userId: userId) }
+        }
         .sheet(item: $legalDocument) { document in
             LegalView(document: document)
         }
@@ -80,6 +86,64 @@ struct AccountView: View {
                         .padding(.vertical, 3)
                         .background(Color.hubSurfaceElevated)
                         .clipShape(Capsule())
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.hubSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// `user_settings.show_message_previews` (D17): previews are OFF by default
+    /// so a new message notification never exposes its text on a shared or
+    /// locked device; the server reads this row when it writes the notification.
+    private var notificationsCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Notifications")
+                .font(.headline)
+                .foregroundStyle(Color.hubPrimary)
+
+            Toggle(isOn: Binding(
+                get: { settings.showMessagePreviews },
+                set: { enabled in
+                    Task {
+                        guard let userId else { return }
+                        do {
+                            try await settings.setShowMessagePreviews(enabled, userId: userId)
+                            settingsError = nil
+                        } catch {
+                            settingsError = "Couldn't save that setting. Try again."
+                        }
+                    }
+                }
+            )) {
+                Text("Show message previews")
+                    .font(.subheadline)
+                    .foregroundStyle(.white)
+            }
+            .tint(Color.hubPrimary)
+            .disabled(!settings.isLoaded)
+
+            Text(settings.showMessagePreviews
+                 ? "New-message notifications include the first line of the message."
+                 : "New-message notifications only say who wrote, not what they said.")
+                .font(.caption)
+                .foregroundStyle(Color.hubTextSecondary)
+
+            if let settingsError {
+                HubErrorText(message: settingsError)
+            } else if settings.loadFailed {
+                HStack(spacing: 8) {
+                    Text("Couldn't load your notification settings.")
+                        .font(.caption)
+                        .foregroundStyle(Color.hubTextSecondary)
+                    Spacer()
+                    Button("Retry") {
+                        Task { if let userId { await settings.load(userId: userId) } }
+                    }
+                    .font(.caption.bold())
+                    .foregroundStyle(Color.hubPrimary)
                 }
             }
         }

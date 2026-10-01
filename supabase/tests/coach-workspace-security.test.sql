@@ -125,7 +125,8 @@ begin
   select count(*) into n from public.athletes;
   assert n = 0, 'B0 coaches do not read the athletes table, saw ' || n;
 
-  j := public.search_published_athletes(prog_a);
+  -- Fixture names all contain "Athlete"; the name query keeps real published accounts out of the totals.
+  j := public.search_published_athletes(prog_a, p_query => 'athlete');
   assert (j ->> 'total')::int = 2, 'B1 two published mens athletes, got ' || (j ->> 'total');
   assert j -> 'next_cursor' is null or (j -> 'next_cursor') = 'null'::jsonb, 'B1 single page';
   -- Allowlist: forbidden keys absent from every card
@@ -139,31 +140,31 @@ begin
   assert n = 0, 'B4 other gender absent (program is mens)';
 
   -- Radius from St. Louis: 100 mi keeps Near, drops Far
-  j := public.search_published_athletes(prog_a, p_center_lat => 38.63, p_center_lng => -90.20, p_radius_miles => 100);
+  j := public.search_published_athletes(prog_a, p_query => 'athlete', p_center_lat => 38.63, p_center_lng => -90.20, p_radius_miles => 100);
   assert (j ->> 'total')::int = 1 and (j -> 'items' -> 0 ->> 'full_name') = 'Near Athlete', 'B5 radius filter';
   assert (j -> 'items' -> 0 ->> 'distance_miles')::int = 0, 'B5 distance rounded to 5: ' || (j -> 'items' -> 0 ->> 'distance_miles');
-  j := public.search_published_athletes(prog_a, p_center_lat => 38.63, p_center_lng => -90.20, p_radius_miles => 250);
+  j := public.search_published_athletes(prog_a, p_query => 'athlete', p_center_lat => 38.63, p_center_lng => -90.20, p_radius_miles => 250);
   assert (j ->> 'total')::int = 1, 'B5b Seattle is > 250 mi';
   -- Filters
-  j := public.search_published_athletes(prog_a, p_positions => array['guard']);
+  j := public.search_published_athletes(prog_a, p_query => 'athlete', p_positions => array['guard']);
   assert (j ->> 'total')::int = 1 and (j -> 'items' -> 0 ->> 'position') = 'Point Guard', 'B6 position ilike';
-  j := public.search_published_athletes(prog_a, p_grad_years => array[2026]);
+  j := public.search_published_athletes(prog_a, p_query => 'athlete', p_grad_years => array[2026]);
   assert (j ->> 'total')::int = 1 and (j -> 'items' -> 0 ->> 'full_name') = 'Far Athlete', 'B7 grad year';
-  j := public.search_published_athletes(prog_a, p_min_height_in => 80);
+  j := public.search_published_athletes(prog_a, p_query => 'athlete', p_min_height_in => 80);
   assert (j ->> 'total')::int = 1, 'B8 min height';
-  j := public.search_published_athletes(prog_a, p_min_gpa => 3.5);
+  j := public.search_published_athletes(prog_a, p_query => 'athlete', p_min_gpa => 3.5);
   assert (j ->> 'total')::int = 1 and (j -> 'items' -> 0 ->> 'full_name') = 'Near Athlete', 'B9 min gpa';
-  j := public.search_published_athletes(prog_a, p_playing_within => '7d');
+  j := public.search_published_athletes(prog_a, p_query => 'athlete', p_playing_within => '7d');
   assert (j ->> 'total')::int = 1 and (j -> 'items' -> 0 ->> 'full_name') = 'Near Athlete', 'B10 playing within 7d';
-  j := public.search_published_athletes(prog_a, p_states => array['wa']);
+  j := public.search_published_athletes(prog_a, p_query => 'athlete', p_states => array['wa']);
   assert (j ->> 'total')::int = 1 and (j -> 'items' -> 0 ->> 'state') = 'WA', 'B11 state filter';
   j := public.search_published_athletes(prog_a, p_query => 'far');
   assert (j ->> 'total')::int = 1, 'B12 name query';
   -- Pagination: page size 1 → two pages, cursor stable, no duplicates
-  j := public.search_published_athletes(prog_a, p_limit => 1);
+  j := public.search_published_athletes(prog_a, p_query => 'athlete', p_limit => 1);
   assert jsonb_array_length(j -> 'items') = 1 and j -> 'next_cursor' is not null and (j -> 'next_cursor') <> 'null'::jsonb, 'B13 page 1 has cursor';
   k := j -> 'items' -> 0 ->> 'full_name';
-  j := public.search_published_athletes(prog_a, p_cursor => j -> 'next_cursor', p_limit => 1);
+  j := public.search_published_athletes(prog_a, p_query => 'athlete', p_cursor => j -> 'next_cursor', p_limit => 1);
   assert jsonb_array_length(j -> 'items') = 1 and (j -> 'items' -> 0 ->> 'full_name') <> k, 'B13 page 2 differs';
   assert (j -> 'next_cursor') = 'null'::jsonb or j -> 'next_cursor' is null, 'B13 page 2 is last';
   err := null;
@@ -222,7 +223,7 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', coach1, 'role', 'authenticated')::text, true);
   perform set_config('request.jwt.claim.sub', coach1::text, true);
   execute 'set local role authenticated';
-  j := public.search_published_athletes(prog_a);
+  j := public.search_published_athletes(prog_a, p_query => 'athlete');
   select count(*) into n from jsonb_array_elements(j -> 'items') it where it ->> 'full_name' = 'Near Athlete';
   assert n = 0 and (j ->> 'total')::int = 1, 'C1 blocked coach does not see the athlete in search';
   err := null; begin j := public.coach_athlete_detail(prog_a, ath_near); exception when others then get stacked diagnostics err = message_text; end;

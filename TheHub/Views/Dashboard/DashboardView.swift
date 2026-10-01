@@ -26,14 +26,37 @@ struct DashboardView: View {
             .navigationTitle("Home")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                if viewModel.managedAthletes.count > 1 {
-                    ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if viewModel.managedAthletes.count > 1 {
                         athleteSwitcher
                     }
+                    NotificationBellButton { notification in
+                        open(notification)
+                    }
+                }
+            }
+            .navigationDestination(isPresented: $showBookmarks) {
+                if let athlete = viewModel.athlete {
+                    BookmarksView(athlete: athlete)
                 }
             }
         }
         .task { await load() }
+    }
+
+    @State private var showBookmarks = false
+
+    /// Athlete-side routing for notification taps (spec §14). Messages go
+    /// to the Messages tab; "saved your profile" opens the Bookmarks list.
+    private func open(_ notification: AppNotification) {
+        switch notification.destination {
+        case .messages, .thread:
+            tabSelection = 3
+        case .athlete:
+            if viewModel.athlete != nil { showBookmarks = true }
+        default:
+            break
+        }
     }
 
     private func load() async {

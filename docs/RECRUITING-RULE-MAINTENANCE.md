@@ -154,8 +154,8 @@ a mapping, not to verify one. Tests: `supabase/tests/coach-onboarding.test.sql`.
 
 | Flag | Stage | Effect |
 |---|---|---|
-| `recruiting_rules_engine_enabled = true` | A (current) | Clients show decisions; enforcement off; trigger logs shadow rows |
-| `recruiting_rules_enforcement_enabled = true` | B | Verified-coach prohibited sends rejected with `RECRUITING_ACTION_PROHIBITED` |
+| `recruiting_rules_engine_enabled = true` | A | Clients show decisions; enforcement off; trigger logs shadow rows |
+| `recruiting_rules_enforcement_enabled = true` | B (current since 2026-10-01) | Verified-coach prohibited sends rejected with `RECRUITING_ACTION_PROHIBITED`; the iOS `send_coach_message` RPC returns `status: denied` and records the attempt in `recruiting_denied_attempts` |
 | both `false` | rollback | App shows "Recruiting status unavailable"; no blocking; no rule shown |
 
 Flip from the app's Admin Settings screen or:

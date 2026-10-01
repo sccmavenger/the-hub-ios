@@ -78,6 +78,7 @@ struct CoachDiscoverView: View {
     @Environment(AuthViewModel.self) private var authViewModel
     @State private var programs = CoachProgramService.shared
     @State private var model = CoachDiscoverModel()
+    @State private var router = NotificationRouter.shared
     @State private var showFilters = false
     @State private var showSavedSearches = false
     @State private var showSaveSearch = false
@@ -121,6 +122,14 @@ struct CoachDiscoverView: View {
         }
         .task(id: TaskKey(programId: programId, filters: model.filters)) {
             await runIfPossible()
+        }
+        // A saved-search alert tap lands here with the search applied.
+        .task(id: router.pendingSavedSearchId) {
+            guard let savedId = router.pendingSavedSearchId else { return }
+            router.pendingSavedSearchId = nil
+            if let saved = try? await CoachWorkspaceService.shared.savedSearch(id: savedId) {
+                model.apply(saved)
+            }
         }
         .sheet(isPresented: $showFilters) {
             DiscoverFiltersSheet(filters: model.filters) { model.filters = $0 }

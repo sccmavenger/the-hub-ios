@@ -227,6 +227,30 @@ final class CoachWorkspaceService {
             .execute()
     }
 
+    /// One saved search by id (notification tap). RLS limits this to the
+    /// caller's own rows, so a foreign id simply returns nil.
+    func savedSearch(id: String) async throws -> CoachSavedSearch? {
+        let rows: [CoachSavedSearch] = try await supabase
+            .from("coach_saved_searches")
+            .select()
+            .eq("id", value: id)
+            .limit(1)
+            .execute()
+            .value
+        return rows.first
+    }
+
+    /// Opt in/out of hourly alerts for new matches (D13). Turning alerts on
+    /// seeds a baseline server-side first, so nothing already visible is
+    /// replayed as "new".
+    func setSavedSearchAlerts(id: String, enabled: Bool) async throws {
+        try await supabase
+            .from("coach_saved_searches")
+            .update(["alerts_enabled": AnyJSON.bool(enabled)])
+            .eq("id", value: id)
+            .execute()
+    }
+
     // MARK: - Messages (019)
 
     func inbox(programId: String) async throws -> [CoachInboxThread] {

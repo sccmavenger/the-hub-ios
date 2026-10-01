@@ -6,6 +6,50 @@ import Supabase
 /// Preflight shows the rules engine's decision for this program and athlete;
 /// the send goes through `send_coach_message`, which is authoritative: a
 /// denial is shown with the server's reason and the preflight is refreshed.
+/// Opens a thread from a notification, where only the athlete id is known:
+/// loads the allowlisted card through `coach_athlete_detail` (which enforces
+/// program, publication and blocks) and then shows the thread.
+struct CoachThreadLoaderView: View {
+    let athleteId: String
+
+    @State private var programs = CoachProgramService.shared
+    @State private var athlete: CoachAthleteCard?
+    @State private var failed = false
+
+    var body: some View {
+        ZStack {
+            Color.hubBackground.ignoresSafeArea()
+            if let athlete {
+                CoachThreadView(athlete: athlete)
+            } else if failed {
+                VStack(spacing: 12) {
+                    Text("This conversation isn't available.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.hubTextSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                    Button("Try Again") { Task { await load() } }
+                        .font(.subheadline.bold())
+                        .foregroundStyle(Color.hubPrimary)
+                }
+            } else {
+                ProgressView().tint(Color.hubPrimary)
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        failed = false
+        guard let programId = programs.selectedContext?.programId else { failed = true; return }
+        do {
+            athlete = try await CoachWorkspaceService.shared.detail(programId: programId, athleteId: athleteId).athlete
+        } catch {
+            failed = true
+        }
+    }
+}
+
 struct CoachThreadView: View {
     @Environment(AuthViewModel.self) private var authViewModel
     @State private var programs = CoachProgramService.shared

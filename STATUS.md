@@ -38,7 +38,7 @@ Then in Xcode:
 | 1 | Foundation — models, auth, tab scaffold | ✅ Done |
 | 2 | Athlete Core — dashboard, profile editor, public profile, college list | ⬜ Next |
 | 3 | Messaging & Family | ⬜ |
-| 4 | Coach Features — onboarding/verification/Coach Mode entry ✅ (2026-09-30); directory, board, pipeline (Coach Workspace spec) ⬜ | 🟡 |
+| 4 | Coach Features — onboarding/verification/Coach Mode entry ✅ (2026-09-30); Coach Workspace 2.0 (Discover, Board, Home, Program) ✅ and 2.1 (Messages, Notifications center, saved-search alerts, enforcement ON) ✅ code complete 2026-10-01 per `docs/COACH-MODE-WORKSPACE-SPEC.md` | ✅ |
 | 5 | Insights & Admin | ⬜ |
 | 6 | Polish & App Store submission | ⬜ |
 
@@ -169,14 +169,14 @@ Recruiting rule authority moved out of the app into Supabase. Spec:
 - One deterministic SQL evaluator (`evaluate_recruiting_action`) serves iOS, web, and the
   `messages` BEFORE INSERT trigger. Swift only deserializes `RecruitingDecision`.
 - Flags in `app_settings`: `recruiting_rules_engine_enabled` = **true** (Stage A, display),
-  `recruiting_rules_enforcement_enabled` = **false** (Stage B hard-block). Unblocked
-  2026-09-30: approving a coach in-app now creates the verified program + membership rows.
-  Kept OFF by decision until real coach decisions have been watched in
-  `recruiting_compliance_decisions`; flip in More → Admin Settings.
+  `recruiting_rules_enforcement_enabled` = **true since 2026-10-01** (Stage B hard-block,
+  switched on at the Coach Mode 2F gate after all suites passed). Verified-coach sends that a
+  published hard-block rule prohibits are refused; the iOS send RPC records each denial in
+  `recruiting_denied_attempts`. Rollback: More → Admin Settings.
 - D2/D3/NAIA/NJCAA have no sourced rule → `needs_review`. D3/NAIA/JUCO rows on the Colleges
   card keep their legacy orientation note by decision (TECH-DEBT #21).
-- Tests: `supabase/tests/*.test.sql` (3 suites, run via `scripts/db-query.sh`) and
-  `TheHubTests/RecruitingRulesTests.swift` (13 tests).
+- Tests: `supabase/tests/*.test.sql` (8 suites as of 2026-10-01, run via `scripts/db-query.sh`;
+  each saves and restores the enforcement flag) and `TheHubTests/*` (55 tests).
 - Terms §6 rewritten in `docs/legal/terms-of-service.md` + `LegalView.swift`
   (last updated 2026-09-30). **Website `/terms` on Lovable still needs the same text.**
 
