@@ -1,5 +1,9 @@
 # App Store Connect — field-by-field content
 
+> **For the 1.3 submission use `docs/APPSTORE-SUBMISSION-1.3.md`** (live
+> snapshot, paste-ready replacements, blanks to fill, gates). This file is the
+> 1.0–1.2 reference and stays valid for anything 1.3 does not change.
+
 > **STATUS 2026-09-21 (verified live via the API).** Everything is set:
 > name, subtitle, both categories, content rights, age rating (13+),
 > description, keywords, promotional text, screenshots (6, COMPLETE),
