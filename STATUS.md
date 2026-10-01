@@ -212,9 +212,14 @@ backend: `supabase/014-coach-onboarding.sql`; tests:
   Coach Workspace spec and the rules engine.
 - **Also fixed**: 007 had dropped the coach-role check on `coach_saved_athletes`
   insert (any signed-in account could bookmark a published athlete); restored in 014.
-- Prod has **no coach applications yet**; the only account is the admin.
+- Prod: one test coach (`tstark@mailinator.com`, University Of IronMan, approved in-app
+  2026-09-30; public inbox — delete before real athletes publish) plus the admin.
   ⚠️ Before the next App Review submission: update review notes (coach sign-up exists,
   access is manually approved) and consider a demo coach path (TECH-DEBT #18, #29).
+- **Phase 2 (Coach Workspace: Home | Discover | Recruiting Board | Messages | Program)**
+  is in gap analysis: `docs/COACH-MODE-PHASE2-GAP-ANALYSIS.md` (2026-09-30). No code yet;
+  waiting on the product/security decisions in its §E. Live S1 findings from that review
+  are TECH-DEBT #32–#34.
 
 ## Tech Decisions Made
 - **iOS 17+ only** — uses `@Observable` macro, no Combine
