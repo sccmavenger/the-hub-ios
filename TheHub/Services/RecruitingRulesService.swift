@@ -126,6 +126,42 @@ final class RecruitingRulesService {
         }
     }
 
+    // MARK: - Coach preflight (013/019)
+
+    private struct CoachActionParams: Encodable {
+        let p_athlete_id: String
+        let p_action_type: String
+        let p_program_id: String?
+    }
+
+    /// The signed-in coach asks about their own send under the named program.
+    /// Same resolver `send_coach_message` and the trigger use, so preflight
+    /// and the final check cannot disagree except by the passage of time.
+    /// Not memoized: the answer is cheap and must track membership changes.
+    func evaluateMyCoachAction(
+        athleteId: String,
+        action: RecruitingAction = .coachSendRecruitingElectronicCorrespondence,
+        programId: String?
+    ) async throws -> RecruitingDecision {
+        guard AppSettingsService.shared.recruitingRulesEngineEnabled else {
+            throw RecruitingRulesError.engineDisabled
+        }
+        return try await supabase
+            .rpc("evaluate_my_coach_action", params: CoachActionParams(
+                p_athlete_id: athleteId, p_action_type: action.rawValue, p_program_id: programId))
+            .execute()
+            .value
+    }
+
+    /// View-friendly variant: every failure becomes `.unavailable`.
+    func loadMyCoachAction(athleteId: String, programId: String?) async -> RecruitingStatusLoad {
+        do {
+            return .loaded(try await evaluateMyCoachAction(athleteId: athleteId, programId: programId))
+        } catch {
+            return .unavailable
+        }
+    }
+
     /// Drop memoized decisions (sign-out, profile edits that change grad year
     /// or gender, admin flag changes).
     func clearCache() {

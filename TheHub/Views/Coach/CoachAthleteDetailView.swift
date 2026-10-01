@@ -208,6 +208,17 @@ struct CoachAthleteDetailView: View {
                 Task { await save() }
             }
         }
+        NavigationLink {
+            CoachThreadView(athlete: detail.athlete)
+        } label: {
+            Label("Message \(detail.athlete.fullName.split(separator: " ").first.map(String.init) ?? "athlete")", systemImage: "message")
+                .font(.subheadline.bold())
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+        }
+        .background(Color.hubSurface)
+        .foregroundStyle(Color.hubPrimary)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     /// Tags and assignee: shared with the whole staff (W5).

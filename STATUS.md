@@ -247,8 +247,16 @@ backend: `supabase/014-coach-onboarding.sql`; tests:
   - **Release gates before submitting 2.0:** #40 questionnaire answer, #18/#29 demo athlete +
     demo coach, website legal copy, delete/re-key `tstark@mailinator.com`, then-current
     reviewer notes. Enforcement flag stays OFF until 2.1 Messages (D15).
-  - Next: **2.1** (Messages, Notifications, saved-search alerts) — confirm spec §2.3 first;
-    `pg_cron` must be enabled for alerts.
+  - **2.1 / 2E done 2026-10-01** (migration 019 applied): **Messages tab** for coaches —
+    inbox scoped to the program, thread view with a live recruiting-rules preflight for the
+    selected program, Send disabled when the rule hard-blocks and enforcement is ON (shadow
+    warning when OFF), sends through `send_coach_message` (denials recorded durably in
+    `recruiting_denied_attempts`, nothing delivered), block/report, Message button on the
+    athlete detail. Coaches lose thread reads when suspended or blocked. Message
+    notification bodies are redacted unless the recipient opts into previews (setting UI
+    lands in 2F). Spec §2.3 confirmations accepted by Danny 2026-10-01.
+  - Next: **2F** — Notifications center (coach + athlete), previews toggle, saved-search
+    alerts (`pg_cron` available, not yet enabled), then flip enforcement ON after its gate.
 
 ## Tech Decisions Made
 - **iOS 17+ only** — uses `@Observable` macro, no Combine

@@ -227,6 +227,39 @@ final class CoachWorkspaceService {
             .execute()
     }
 
+    // MARK: - Messages (019)
+
+    func inbox(programId: String) async throws -> [CoachInboxThread] {
+        try await supabase.rpc("coach_inbox", params: ProgramParams(p_program_id: programId)).execute().value
+    }
+
+    private struct SendParams: Encodable {
+        let p_program_id: String
+        let p_athlete_id: String
+        let p_body: String
+    }
+
+    /// The only coach send path. A `denied` result means the rules engine
+    /// refused the send and recorded the attempt; nothing was delivered.
+    func sendMessage(programId: String, athleteId: String, body: String) async throws -> CoachSendResult {
+        try await supabase
+            .rpc("send_coach_message", params: SendParams(p_program_id: programId, p_athlete_id: athleteId, p_body: body.trimmed))
+            .execute()
+            .value
+    }
+
+    private struct BlockParams: Encodable {
+        let p_athlete_id: String
+        let p_blocked: Bool
+    }
+
+    /// Coaches never receive an athlete's user id; the server resolves it.
+    func setAthleteBlocked(athleteId: String, blocked: Bool) async throws {
+        try await supabase
+            .rpc("coach_block_athlete", params: BlockParams(p_athlete_id: athleteId, p_blocked: blocked))
+            .execute()
+    }
+
     // MARK: - Home / Program
 
     private struct ProgramParams: Encodable { let p_program_id: String }

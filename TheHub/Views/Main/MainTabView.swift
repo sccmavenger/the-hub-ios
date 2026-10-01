@@ -75,9 +75,9 @@ private struct AthleteTabView: View {
 
 // MARK: - Coach Mode (approved coach)
 
-/// Coach Mode 2.0 tabs. Messages joins in 2.1 (W1/W2); no placeholder tabs.
+/// Coach Mode tabs (2.1 adds Messages).
 enum CoachTab: Hashable {
-    case home, discover, board, program
+    case home, discover, board, messages, program
 }
 
 /// Coach Workspace shell: Home · Discover · Board · Program, all scoped to the
@@ -110,6 +110,12 @@ private struct CoachTabView: View {
             }
             .tabItem { Label("Board", systemImage: "rectangle.stack") }
             .tag(CoachTab.board)
+
+            NavigationStack {
+                CoachInboxView()
+            }
+            .tabItem { Label("Messages", systemImage: "message") }
+            .tag(CoachTab.messages)
 
             NavigationStack {
                 CoachProgramView()

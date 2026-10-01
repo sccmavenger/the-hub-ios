@@ -333,6 +333,83 @@ nonisolated struct CoachHomeSummary: Codable, Equatable, Sendable {
     var boardTotal: Int { boardCounts.values.reduce(0, +) }
 }
 
+/// One conversation in the coach inbox (`coach_inbox`, 019).
+nonisolated struct CoachInboxThread: Codable, Identifiable, Equatable, Sendable {
+    nonisolated struct LastMessage: Codable, Equatable, Sendable {
+        let id: String
+        let body: String
+        let senderUserId: String
+        let createdAt: String
+        var complianceStatus: String?
+
+        enum CodingKeys: String, CodingKey {
+            case id, body
+            case senderUserId = "sender_user_id"
+            case createdAt = "created_at"
+            case complianceStatus = "compliance_status"
+        }
+    }
+
+    let athlete: CoachAthleteCard
+    var lastMessage: LastMessage?
+    var unreadCount: Int
+    var boardStage: String?
+
+    var id: String { athlete.athleteId }
+
+    enum CodingKeys: String, CodingKey {
+        case athlete
+        case lastMessage = "last_message"
+        case unreadCount = "unread_count"
+        case boardStage = "board_stage"
+    }
+
+    var boardPipelineStage: PipelineStage? { boardStage.flatMap(PipelineStage.init(rawValue:)) }
+}
+
+/// Result of `send_coach_message` (019). `denied` carries the decision that
+/// refused the send; the attempt is already recorded server-side.
+nonisolated struct CoachSendResult: Codable, Equatable, Sendable {
+    nonisolated enum Status: String, Codable, Sendable {
+        case sent
+        case denied
+    }
+
+    let status: Status
+    let decision: RecruitingDecision?
+    let message: Message?
+}
+
+extension RecruitingDecision {
+    /// Coach-side explanation for a `needs_review`. The stock hint is worded
+    /// for the athlete; coaches need to know whether the gap is theirs, the
+    /// program's, or the athlete's profile — and that the send is still allowed.
+    var coachMissingContextHint: String? {
+        guard status == .needsReview else { return nil }
+        if missingContext.contains("coach.verified_program") {
+            return "Your program membership isn't verified for this athlete's sport yet, so no rule can be applied. The message is allowed but not evaluated."
+        }
+        if missingContext.contains("coach.verified_program.ambiguous") {
+            return "You're verified with more than one program for this sport. Choose the program you're recruiting for from the Program tab."
+        }
+        if missingContext.contains("program.sport_gender.mismatch") {
+            return "This program recruits a different gender than this athlete's profile lists."
+        }
+        if missingContext.contains("athlete.grad_year") || missingContext.contains("athlete.sport_gender") {
+            return "This athlete's profile is missing the class year or program that the rule keys on. The message is allowed but not evaluated."
+        }
+        if missingContext.contains("rule") {
+            return "No published rule covers this program's association and division yet. The message is allowed but not evaluated."
+        }
+        return "The Hub couldn't match a rule to this send. It is allowed but not evaluated."
+    }
+
+    /// True when the database will refuse this send with enforcement on.
+    var wouldHardBlock: Bool {
+        status == .prohibited && enforcement == .hardBlock && isVerifiedContext
+    }
+}
+
 /// A page of Discover results from `search_published_athletes`.
 nonisolated struct AthleteSearchPage: Codable, Equatable, Sendable {
     var items: [CoachAthleteCard]

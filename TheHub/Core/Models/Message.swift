@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated struct Message: Codable, Identifiable, Sendable {
+nonisolated struct Message: Codable, Identifiable, Equatable, Sendable {
     let id: String
     let athleteId: String
     let coachUserId: String
@@ -8,6 +8,10 @@ nonisolated struct Message: Codable, Identifiable, Sendable {
     let body: String
     var readAt: String?
     let createdAt: String
+    /// The coach's representing program for a coach send (019); nil for athlete sends.
+    var programId: String?
+    /// Rules-engine stamp set by the database trigger (013/019); nil for athlete sends.
+    var complianceStatus: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -17,6 +21,8 @@ nonisolated struct Message: Codable, Identifiable, Sendable {
         case body
         case readAt = "read_at"
         case createdAt = "created_at"
+        case programId = "program_id"
+        case complianceStatus = "compliance_status"
     }
 
     var isRead: Bool { readAt != nil }

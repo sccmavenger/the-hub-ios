@@ -126,6 +126,48 @@ struct CoachWorkspaceTests {
         #expect(try BoardTags.clean((1...10).map { "t\($0)" }).count == 10)
     }
 
+    @Test("Inbox threads and send results decode (019)")
+    func inboxAndSend() throws {
+        let inbox = """
+        [{"athlete":\(Self.cardJSON),"last_message":{"id":"m1","body":"Hi coach","sender_user_id":"u-ath","created_at":"2026-10-01T00:00:00+00:00","compliance_status":null},"unread_count":1,"board_stage":"watching"}]
+        """
+        let threads = try JSONDecoder().decode([CoachInboxThread].self, from: Data(inbox.utf8))
+        #expect(threads.first?.unreadCount == 1 && threads.first?.boardPipelineStage == .watching)
+        #expect(threads.first?.lastMessage?.body == "Hi coach")
+
+        // A send is only ever denied against the coach's verified program.
+        let verifiedProhibited = RecruitingRulesTests.prohibitedJSON
+            .replacingOccurrences(of: "\"context_source\": \"client_supplied\"", with: "\"context_source\": \"verified_program\"")
+        let denied = """
+        {"status":"denied","decision":\(verifiedProhibited),"message":null}
+        """
+        let result = try JSONDecoder().decode(CoachSendResult.self, from: Data(denied.utf8))
+        #expect(result.status == .denied)
+        #expect(result.decision?.wouldHardBlock == true)
+        #expect(result.message == nil)
+
+        let sent = """
+        {"status":"sent","decision":null,"message":{"id":"m2","athlete_id":"a1","coach_user_id":"c1","sender_user_id":"c1","body":"Hello","read_at":null,"created_at":"2026-10-01T00:00:00+00:00","program_id":"p1","compliance_status":"permitted"}}
+        """
+        let ok = try JSONDecoder().decode(CoachSendResult.self, from: Data(sent.utf8))
+        #expect(ok.status == .sent && ok.message?.programId == "p1" && ok.message?.complianceStatus == "permitted")
+    }
+
+    @Test("Coach-side needs-review hints name whose gap it is")
+    func coachHints() throws {
+        var base = RecruitingRulesTests.needsReviewJSON
+        base = base.replacingOccurrences(of: "\"missing_context\": [\"athlete.sport_gender\"]", with: "\"missing_context\": [\"coach.verified_program.ambiguous\"]")
+        let ambiguous = try JSONDecoder().decode(RecruitingDecision.self, from: Data(base.utf8))
+        #expect(ambiguous.coachMissingContextHint?.contains("more than one program") == true)
+        let informational = try JSONDecoder().decode(RecruitingDecision.self, from: Data(RecruitingRulesTests.prohibitedJSON.utf8))
+        #expect(informational.coachMissingContextHint == nil, "hints only for needs_review")
+        #expect(!informational.wouldHardBlock, "a client_supplied evaluation never hard-blocks")
+        let verified = RecruitingRulesTests.prohibitedJSON
+            .replacingOccurrences(of: "\"context_source\": \"client_supplied\"", with: "\"context_source\": \"verified_program\"")
+        let enforced = try JSONDecoder().decode(RecruitingDecision.self, from: Data(verified.utf8))
+        #expect(enforced.wouldHardBlock)
+    }
+
     @Test("Pipeline stages match the database check constraint")
     func stageRawValues() {
         #expect(PipelineStage.allCases.map(\.rawValue) == ["watching", "evaluating", "contacted", "offered", "passed"])

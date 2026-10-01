@@ -38,6 +38,8 @@ struct RecruitingStatusView: View {
     let title: String
     let load: RecruitingStatusLoad
     var showsSource = true
+    /// Coach surfaces explain needs-review gaps from the coach's side.
+    var coachMode = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -75,7 +77,7 @@ struct RecruitingStatusView: View {
                         .foregroundStyle(Color.hubWarning)
                 }
 
-                if let hint = decision.missingContextHint {
+                if let hint = coachMode ? decision.coachMissingContextHint : decision.missingContextHint {
                     Text(hint)
                         .font(.caption)
                         .foregroundStyle(Color.hubWarning)

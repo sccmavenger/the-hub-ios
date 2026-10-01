@@ -176,20 +176,22 @@ struct CoachHomeView: View {
         }
     }
 
-    /// W2: athletes can already message coaches; the coach inbox arrives in 2.1.
     private func messagesNote(_ unread: Int) -> some View {
-        Label {
-            Text(unread == 1 ? "1 athlete has messaged you. Messages arrive in the next update."
-                             : "\(unread) athletes have messaged you. Messages arrive in the next update.")
-                .font(.caption)
-                .foregroundStyle(Color.hubTextSecondary)
-        } icon: {
-            Image(systemName: "message.badge").foregroundStyle(Color.hubPrimary)
+        Button {
+            tabSelection = .messages
+        } label: {
+            Label {
+                Text(unread == 1 ? "1 unread conversation" : "\(unread) unread conversations")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.white)
+            } icon: {
+                Image(systemName: "message.badge.fill").foregroundStyle(Color.hubPrimary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(Color.hubSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(Color.hubSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     private var recentActivity: some View {
