@@ -63,10 +63,14 @@ struct NCAAJourneyView: View {
                         if let saveError {
                             saveErrorBanner(saveError)
                         }
+                        // The division pills sit ABOVE everything that depends on
+                        // them (hero, timeline, rules, GPA minimums), so changing
+                        // the division only re-lays-out content below the finger
+                        // and the page no longer jumps (TestFlight feedback 2026-10-01).
+                        divisionPicker
                         nextStepHero
                         timelineCard
                         recruitingCommunicationCard
-                        divisionPicker
                         academicReadinessCard
                         progressCard
                         footerNote
@@ -515,8 +519,11 @@ struct NCAAJourneyView: View {
     }
 
     private func loadRecruitingStatus() async {
-        coachMessagesStatus = .loading
-        athleteOutreachStatus = .loading
+        // Keep the previous decision on screen while the new division's rule
+        // loads: collapsing to a spinner changed the card height and made the
+        // page lurch under the division pills.
+        if case .loaded = coachMessagesStatus {} else { coachMessagesStatus = .loading }
+        if case .loaded = athleteOutreachStatus {} else { athleteOutreachStatus = .loading }
         let division = recruitingDivision
         let service = RecruitingRulesService.shared
         async let coach = service.load(
@@ -560,7 +567,7 @@ struct NCAAJourneyView: View {
                 }
             }
 
-            Text("Your timeline and targets adjust to the division you pick. D3 skips certification but still needs a free NCAA ID.")
+            Text("Everything below adjusts to the division you pick. D3 skips certification but still needs a free NCAA ID.")
                 .font(.caption)
                 .foregroundStyle(Color.hubTextSecondary)
         }

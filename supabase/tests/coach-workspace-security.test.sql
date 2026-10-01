@@ -183,7 +183,9 @@ begin
   -- Saving to the program board (017) unlocks contact
   j := public.board_save_athlete(prog_a, ath_near);
   j := public.coach_athlete_detail(prog_a, ath_near);
-  assert (j ->> 'contact_unlocked')::boolean and (j -> 'contact' ->> 'athlete_email') = 'near@cw-test.invalid', 'B19 contact after save';
+  -- 021: Near Athlete is a minor (DOB 2009) → guardian unlocks, athlete email hidden.
+  assert (j ->> 'contact_unlocked')::boolean and (j -> 'contact' ->> 'guardian_name') = 'Near Guardian'
+     and (j -> 'contact' ->> 'athlete_email') is null, 'B19 contact after save (minor redaction): ' || (j -> 'contact')::text;
   -- 018: search items carry board_stage + next_event_date
   j := public.search_published_athletes(prog_a, p_query => 'near');
   assert (j -> 'items' -> 0 ->> 'board_stage') = 'watching', 'B19b board_stage in search: ' || coalesce(j -> 'items' -> 0 ->> 'board_stage', '<null>');

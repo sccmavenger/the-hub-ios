@@ -145,9 +145,14 @@ struct CollegeListView: View {
     }
 
     private var content: some View {
-        ScrollView {
+        ScrollView(.vertical) {
             VStack(spacing: 16) {
-                complianceCard
+                RecruitingStatusCard(
+                    outreach: outreachStatus,
+                    d1Coach: d1CoachStatus,
+                    d2Coach: d2CoachStatus,
+                    gender: viewModel.athlete?.sportGender.flatMap(SportGender.init(rawValue:))
+                )
 
                 if let message = viewModel.errorMessage {
                     HubErrorText(message: message)
@@ -173,92 +178,7 @@ struct CollegeListView: View {
         .refreshable { await load() }
     }
 
-    // MARK: - Recruiting status card (Recruiting Rules Engine)
-
-    /// Action-specific status per division from the backend evaluator
-    /// (spec §19). D1/D2 rows are engine-backed (D2 has no sourced rule yet
-    /// and honestly reads "Needs review"); D3/NAIA/JUCO keep the legacy
-    /// orientation note pending the coach-experience work. Per-program status
-    /// arrives with verified program data in that later phase.
-    private var complianceCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Recruiting status")
-                .font(.headline)
-                .foregroundStyle(.white)
-
-            AthleteOutreachStatusView(load: outreachStatus)
-
-            Divider().background(Color.hubBorder)
-
-            Text("Coach recruiting messages")
-                .font(.subheadline.bold())
-                .foregroundStyle(.white)
-
-            RecruitingStatusView(title: "NCAA D1", load: d1CoachStatus)
-            RecruitingStatusView(title: "NCAA D2", load: d2CoachStatus)
-
-            ForEach(Compliance.divisionsWithoutEngineRules, id: \.self) { division in
-                legacyDivisionRow(division)
-            }
-
-            let gender = viewModel.athlete?.sportGender.flatMap(SportGender.init(rawValue:))
-            if let gender {
-                let calendar = Compliance.d1Calendar(gender: gender)
-                Link(calendar.label, destination: calendar.url)
-                    .font(.caption)
-                    .foregroundStyle(Color.hubBlue)
-            } else {
-                Text("Set boys/girls basketball in your profile to see the calendar that applies to you.")
-                    .font(.caption)
-                    .foregroundStyle(Color.hubWarning)
-            }
-
-            Link("NCAA Eligibility Center", destination: Compliance.eligibilityCenterURL)
-                .font(.caption)
-                .foregroundStyle(Color.hubBlue)
-
-            Text(Compliance.actionSpecificNote)
-                .font(.caption2)
-                .foregroundStyle(Color.hubTextSecondary)
-
-            Text(Compliance.rulesEngineDisclaimer)
-                .font(.caption2)
-                .foregroundStyle(Color.hubTextSecondary)
-
-            // Shown only while crest logos are switched on, since that's the
-            // only time third-party marks appear on screen.
-            if AppSettingsService.shared.collegeLogosEnabled {
-                Text(Compliance.trademarkNotice)
-                    .font(.caption2)
-                    .foregroundStyle(Color.hubTextSecondary)
-            }
-        }
-        .padding(16)
-        .background(Color.hubSurface.opacity(0.5))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-    }
-
-    /// Legacy orientation row for divisions the engine has no sourced rule
-    /// for. Kept verbatim by product decision (2026-09-30) until the
-    /// coach-experience spec; tracked in docs/TECH-DEBT.md.
-    private func legacyDivisionRow(_ division: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("NCAA \(division)".replacingOccurrences(of: "NCAA NAIA", with: "NAIA").replacingOccurrences(of: "NCAA JUCO", with: "JUCO / NJCAA"))
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.white)
-                Spacer(minLength: 8)
-                RecruitingStatusBadge(label: "Contact allowed", color: Color.hubSuccess)
-            }
-            if let note = Compliance.divisionNote(division) {
-                Text(note)
-                    .font(.caption)
-                    .foregroundStyle(Color.hubTextSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
+    // Recruiting status card lives in Views/Recruiting/RecruitingStatusCard.swift.
 
     // MARK: - Rows
 

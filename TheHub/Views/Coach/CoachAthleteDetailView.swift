@@ -400,16 +400,23 @@ struct CoachAthleteDetailView: View {
     private func contactCard(_ detail: CoachAthleteDetail) -> some View {
         sectionCard("Contact") {
             if detail.contactUnlocked, let contact = detail.contact {
-                if contact.isEmpty {
+                if contact.isMinorRedacted {
+                    // 021: a minor's own email and phone are never shown to coaches.
+                    Label {
+                        Text(contact.isEmpty
+                             ? "This athlete is under 18, so their own email and phone aren't shared. The family hasn't listed a guardian or club coach yet — message the athlete in The Hub instead."
+                             : "This athlete is under 18, so their own email and phone aren't shared. Reach the family through the guardian or club coach below, or message in The Hub.")
+                            .font(.caption)
+                            .foregroundStyle(Color.hubWarning)
+                    } icon: {
+                        Image(systemName: "person.badge.shield.checkmark.fill").foregroundStyle(Color.hubWarning)
+                    }
+                } else if contact.isEmpty {
                     Text("This athlete hasn't added contact details yet.")
                         .font(.subheadline)
                         .foregroundStyle(Color.hubTextSecondary)
-                } else {
-                    if contact.guardianName != nil || contact.guardianEmail != nil || contact.guardianPhone != nil {
-                        Text("Contact a minor's guardian first when one is listed.")
-                            .font(.caption)
-                            .foregroundStyle(Color.hubWarning)
-                    }
+                }
+                if !contact.isEmpty {
                     contactRow("Guardian", contact.guardianName, nil)
                     contactRow("Guardian email", contact.guardianEmail, "mailto:")
                     contactRow("Guardian phone", contact.guardianPhone, "tel:")

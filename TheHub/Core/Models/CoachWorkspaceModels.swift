@@ -124,6 +124,9 @@ nonisolated struct CoachContact: Codable, Equatable, Sendable {
     var guardianPhone: String?
     var clubCoachName: String?
     var clubCoachPhone: String?
+    /// 021: true when the athlete is a minor and the server withheld their
+    /// own email/phone. Guardian and club-coach fields may still be present.
+    var athleteContactHidden: Bool?
 
     enum CodingKeys: String, CodingKey {
         case athleteEmail = "athlete_email"
@@ -133,7 +136,10 @@ nonisolated struct CoachContact: Codable, Equatable, Sendable {
         case guardianPhone = "guardian_phone"
         case clubCoachName = "club_coach_name"
         case clubCoachPhone = "club_coach_phone"
+        case athleteContactHidden = "athlete_contact_hidden"
     }
+
+    var isMinorRedacted: Bool { athleteContactHidden == true }
 
     var isEmpty: Bool {
         [athleteEmail, athletePhone, guardianName, guardianEmail, guardianPhone, clubCoachName, clubCoachPhone]

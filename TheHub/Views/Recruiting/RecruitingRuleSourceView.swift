@@ -13,12 +13,14 @@ struct RecruitingRuleSourceView: View {
             VStack(alignment: .leading, spacing: 3) {
                 if let url = decision.sourceLink {
                     Link(destination: url) {
-                        HStack(spacing: 4) {
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Text(decision.sourceTitle ?? "Official source")
+                                .multilineTextAlignment(.leading)
                             Image(systemName: "arrow.up.right")
                         }
                         .font(.caption.bold())
                         .foregroundStyle(Color.hubPrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .accessibilityLabel("Open official source: \(decision.sourceTitle ?? "governing body document")")
                 }

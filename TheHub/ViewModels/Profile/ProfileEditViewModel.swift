@@ -310,7 +310,9 @@ final class ProfileEditViewModel {
             try await AthleteService.shared.saveContact(
                 athleteId: updated.id,
                 athleteEmail: trimmedOrNil(athleteEmail),
-                athletePhone: trimmedOrNil(athletePhone),
+                // A minor's phone is never collected (021); clearing it here
+                // also removes anything saved before that rule.
+                athletePhone: isAthleteAdult ? trimmedOrNil(athletePhone) : nil,
                 guardianName: trimmedOrNil(guardianName),
                 guardianEmail: trimmedOrNil(guardianEmail),
                 guardianPhone: trimmedOrNil(guardianPhone),
@@ -509,6 +511,52 @@ final class ProfileEditViewModel {
             eventError = error.localizedDescription
             return false
         }
+    }
+
+    /// Adult means a date of birth is set and the athlete is 18 or older.
+    /// Unknown age is treated as a minor so contact rules fail closed.
+    var isAthleteAdult: Bool {
+        guard hasDateOfBirth else { return false }
+        let years = Calendar.current.dateComponents([.year], from: dateOfBirth, to: .now).year ?? 0
+        return years >= 18
+    }
+
+    /// Imports games parsed from an .ics file. Duplicates (same day and
+    /// opponent, case-insensitive) are skipped; the first failure stops the
+    /// run so the user isn't left with half an unknown set.
+    func importEvents(_ parsed: [ICSParser.Event]) async -> (added: Int, skipped: Int) {
+        eventError = nil
+        guard let current = athlete else { return (0, parsed.count) }
+        var added = 0
+        var skipped = 0
+        for item in parsed {
+            let opponent = item.opponent ?? (item.summary.isBlank ? nil : item.summary)
+            let duplicate = events.contains {
+                $0.eventDate == item.date && ($0.opponent ?? "").lowercased() == (opponent ?? "").lowercased()
+            }
+            if duplicate || (opponent == nil && item.location == nil) {
+                skipped += 1
+                continue
+            }
+            do {
+                let event = try await AthleteService.shared.addEvent(
+                    athleteId: current.id,
+                    eventDate: item.date,
+                    eventTime: item.time,
+                    opponent: opponent,
+                    location: item.location,
+                    notes: nil,
+                    isMaybe: false
+                )
+                events.append(event)
+                added += 1
+            } catch {
+                eventError = "Imported \(added) game\(added == 1 ? "" : "s") before an error: \(error.localizedDescription)"
+                break
+            }
+        }
+        events.sort { $0.eventDate < $1.eventDate }
+        return (added, skipped)
     }
 
     func deleteEvent(_ event: AthleteEvent) async {

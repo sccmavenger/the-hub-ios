@@ -50,6 +50,7 @@ begin
   update public.athletes set sport_gender = 'mens', grad_year = 2026, position = 'Forward' where id = ath2;
   update public.athletes set is_published = true where id in (ath1, ath2);
   insert into public.athlete_contacts (athlete_id, athlete_email, guardian_phone) values (ath1, 'a1@pb-test.invalid', '555-0199');
+  insert into public.athlete_contacts (athlete_id, athlete_email, athlete_phone) values (ath2, 'a2@pb-test.invalid', '555-0200');
 
   insert into public.recruiting_programs (institution_name, normalized_institution_name, governing_body, division, sport, sport_gender, verified_at, active)
   values ('PB Test University', 'pb test university ' || coach1, 'NCAA', 'D1', 'basketball', 'mens', now(), true) returning id into prog_a;
@@ -80,10 +81,12 @@ begin
   assert (j ->> 'id')::uuid = entry1, 'A3 second save is a no-op';
 
   j := public.coach_athlete_detail(prog_a, ath1);
-  assert (j ->> 'contact_unlocked')::boolean and (j -> 'contact' ->> 'athlete_email') = 'a1@pb-test.invalid', 'A4 contact via RPC after save';
+  -- 021: ath1 is a minor (DOB 2009) → guardian details unlock, athlete email/phone never do.
+  assert (j ->> 'contact_unlocked')::boolean and (j -> 'contact' ->> 'guardian_phone') = '555-0199', 'A4 guardian contact via RPC after save';
+  assert (j -> 'contact' ->> 'athlete_email') is null and (j -> 'contact' ->> 'athlete_contact_hidden')::boolean, 'A4 minor athlete email hidden: ' || (j -> 'contact')::text;
   assert (j -> 'board' ->> 'id')::uuid = entry1, 'A4 board state in detail';
   select count(*) into n from public.athlete_contacts where athlete_id = ath1;
-  assert n = 1, 'A5 contacts RLS unlocked after save';
+  assert n = 0, 'A5 coaches never read athlete_contacts directly (021)';
   execute 'reset role';
 
   select count(*) into n from public.notifications where user_id = ath1_user and type = 'bookmark'
@@ -248,6 +251,10 @@ begin
   j := public.board_restore(entry1);
   j := public.board_save_athlete(prog_a, ath2, 'contacted');
   entry2 := (j ->> 'id')::uuid;
+  -- 021: ath2 is an adult (DOB 2005) → own email unlocks.
+  j := public.coach_athlete_detail(prog_a, ath2);
+  assert (j ->> 'contact_unlocked')::boolean and (j -> 'contact' ->> 'athlete_email') = 'a2@pb-test.invalid'
+     and not (j -> 'contact' ->> 'athlete_contact_hidden')::boolean, 'F0 adult athlete email shown: ' || (j -> 'contact')::text;
   j := public.board_list(prog_a, p_limit => 1);
   assert jsonb_array_length(j -> 'items') = 1 and j -> 'next_cursor' <> 'null'::jsonb, 'F1 page 1';
   k := j -> 'items' -> 0 -> 'entry' ->> 'id';
