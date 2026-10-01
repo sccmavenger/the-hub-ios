@@ -358,3 +358,26 @@ nonisolated struct AthleteSearchPage: Codable, Equatable, Sendable {
 nonisolated private extension String {
     var nilIfEmpty: String? { isEmpty ? nil : self }
 }
+
+/// Client mirror of `coach_tags_clean()` (017) so the editor can refuse bad
+/// input before the round-trip. The database check remains authoritative.
+nonisolated enum BoardTags {
+    enum ValidationError: Error, Equatable {
+        case tooLong(String)
+        case tooMany
+    }
+
+    static func clean(_ tags: [String]) throws -> [String] {
+        var cleaned: [String] = []
+        for raw in tags {
+            let tag = raw.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+            if tag.isEmpty { continue }
+            if tag.count > BoardEntry.maxTagLength { throw ValidationError.tooLong(tag) }
+            if !cleaned.contains(where: { $0.caseInsensitiveCompare(tag) == .orderedSame }) {
+                cleaned.append(tag)
+            }
+        }
+        if cleaned.count > BoardEntry.maxTags { throw ValidationError.tooMany }
+        return cleaned
+    }
+}

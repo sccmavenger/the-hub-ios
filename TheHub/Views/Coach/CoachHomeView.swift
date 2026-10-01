@@ -1,17 +1,20 @@
 import SwiftUI
 import Auth
 
-/// Coach Mode Home (Phase 2B shape): the selected verified program, a switcher
-/// when the coach holds several, and the account entry. 2D adds the board
-/// counts, assigned-to-me tile and recent activity from `coach_home_summary`.
+/// Coach Home (spec §10): the selected program, board counts by stage, what's
+/// assigned to you, recent staff activity, and quick actions. All numbers come
+/// from `coach_home_summary`, which honors blocks and removals.
 struct CoachHomeView: View {
     @Environment(AuthViewModel.self) private var authViewModel
     @State private var programs = CoachProgramService.shared
+    @Binding var tabSelection: CoachTab
+
+    @State private var summary: CoachHomeSummary?
+    @State private var summaryFailed = false
     @State private var showSwitcher = false
 
-    private var userId: String? {
-        authViewModel.session?.user.id.uuidString
-    }
+    private var userId: String? { authViewModel.session?.user.id.uuidString }
+    private var programId: String? { programs.selectedContext?.programId }
 
     var body: some View {
         ZStack {
@@ -19,7 +22,6 @@ struct CoachHomeView: View {
 
             ScrollView {
                 VStack(spacing: 16) {
-                    header
                     switch programs.load {
                     case .notLoaded, .loading:
                         ProgressView().tint(Color.hubPrimary).padding(.vertical, 24)
@@ -27,35 +29,26 @@ struct CoachHomeView: View {
                         retryCard("Couldn't load your program.")
                     case .loaded(let contexts):
                         if let selected = programs.selectedContext {
-                            ProgramCardView(context: selected, isCurrent: true)
-                            if programs.canSwitch {
-                                Button {
-                                    showSwitcher = true
-                                } label: {
-                                    Label("Switch program (\(contexts.count) verified)", systemImage: "arrow.left.arrow.right")
-                                        .font(.subheadline.bold())
-                                        .frame(maxWidth: .infinity)
-                                        .frame(height: 44)
-                                }
-                                .background(Color.hubSurface)
-                                .foregroundStyle(Color.hubPrimary)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                            programHeader(selected, count: contexts.count)
+                            boardTiles
+                            quickActions
+                            if let summary, summary.unreadThreads > 0 {
+                                messagesNote(summary.unreadThreads)
                             }
+                            recentActivity
                         } else if contexts.isEmpty {
                             retryCard("Your verified program isn't available yet. Pull to refresh in a moment.")
                         } else {
-                            // Several programs, none chosen: the tab view presents the switcher.
                             ProgressView().tint(Color.hubPrimary).padding(.vertical, 24)
                         }
                     }
-                    rulesCard
-                    accountCard
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 12)
             }
             .refreshable {
                 if let userId { await programs.refresh(coachUserId: userId) }
+                await loadSummary()
             }
         }
         .navigationTitle("Coach Home")
@@ -63,44 +56,33 @@ struct CoachHomeView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) { CoachProgramChip() }
         }
-        .sheet(isPresented: $showSwitcher) {
-            CoachProgramSwitcherView()
-        }
+        .task(id: programId) { await loadSummary() }
+        .sheet(isPresented: $showSwitcher) { CoachProgramSwitcherView() }
     }
 
-    private var header: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 36))
-                .foregroundStyle(Color.hubSuccess)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Program verified")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                Text("Coach Mode is active for your program.")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.hubTextSecondary)
-            }
-            Spacer()
-        }
-        .padding(16)
-        .background(Color.hubSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-    }
+    // MARK: - Sections
 
-    private var rulesCard: some View {
-        Label {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Recruiting rules")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.white)
-                Text("Messages you send to athletes are evaluated against published recruiting rules for your verified program and the athlete's class. When a rule prohibits contact, The Hub tells you the date it opens.")
-                    .font(.caption)
-                    .foregroundStyle(Color.hubTextSecondary)
+    private func programHeader(_ context: CoachProgramContext, count: Int) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.system(size: 30))
+                    .foregroundStyle(Color.hubSuccess)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(context.institutionName)
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Text([context.programLabel, context.divisionLabel].compactMap { $0 }.joined(separator: " · "))
+                        .font(.subheadline)
+                        .foregroundStyle(Color.hubTextSecondary)
+                }
+                Spacer()
             }
-        } icon: {
-            Image(systemName: "calendar.badge.clock")
-                .foregroundStyle(Color.hubPrimary)
+            if count > 1 {
+                Button("Switch program") { showSwitcher = true }
+                    .font(.caption.bold())
+                    .foregroundStyle(Color.hubPrimary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
@@ -108,26 +90,131 @@ struct CoachHomeView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
-    private var accountCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Account")
-                .font(.subheadline.bold())
-                .foregroundStyle(.white)
-            NavigationLink {
-                AccountView()
-            } label: {
-                HStack {
-                    Label("Account & Legal", systemImage: "person.crop.circle")
-                        .foregroundStyle(.white)
-                    Spacer()
-                    Image(systemName: "chevron.right")
+    private var boardTiles: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Recruiting Board")
+                    .font(.headline)
+                    .foregroundStyle(Color.hubPrimary)
+                Spacer()
+                if let summary {
+                    Text(summary.boardTotal == 1 ? "1 prospect" : "\(summary.boardTotal) prospects")
                         .font(.caption)
                         .foregroundStyle(Color.hubTextSecondary)
                 }
             }
-            Text("Changing schools? Contact \(HubSupport.email) and we'll move your verified membership.")
+            if summaryFailed && summary == nil {
+                Text("Couldn't load board counts. Pull to refresh.")
+                    .font(.caption)
+                    .foregroundStyle(Color.hubTextSecondary)
+            } else if let summary, summary.boardTotal == 0 {
+                Text("No prospects yet. Find athletes in Discover and save them to your program's board.")
+                    .font(.caption)
+                    .foregroundStyle(Color.hubTextSecondary)
+            } else {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                    ForEach(PipelineStage.allCases, id: \.self) { stage in
+                        NavigationLink {
+                            CoachBoardView(initialStage: stage)
+                        } label: {
+                            tile(title: stage.displayName, value: summary?.count(for: stage) ?? 0, tint: stage.color)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    NavigationLink {
+                        CoachBoardView(initialMineOnly: true)
+                    } label: {
+                        tile(title: "Assigned to me", value: summary?.assignedToMe ?? 0, tint: Color.hubPrimary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.hubSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func tile(title: String, value: Int, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("\(value)")
+                .font(.title2.bold())
+                .foregroundStyle(tint)
+            Text(title)
                 .font(.caption)
                 .foregroundStyle(Color.hubTextSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color.hubSurfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var quickActions: some View {
+        HStack(spacing: 10) {
+            Button { tabSelection = .discover } label: {
+                Label("Find athletes", systemImage: "magnifyingglass")
+                    .font(.subheadline.bold())
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+            }
+            .background(Color.hubPrimary)
+            .foregroundStyle(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+
+            Button { tabSelection = .board } label: {
+                Label("Open board", systemImage: "rectangle.stack")
+                    .font(.subheadline.bold())
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+            }
+            .background(Color.hubSurface)
+            .foregroundStyle(Color.hubPrimary)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    /// W2: athletes can already message coaches; the coach inbox arrives in 2.1.
+    private func messagesNote(_ unread: Int) -> some View {
+        Label {
+            Text(unread == 1 ? "1 athlete has messaged you. Messages arrive in the next update."
+                             : "\(unread) athletes have messaged you. Messages arrive in the next update.")
+                .font(.caption)
+                .foregroundStyle(Color.hubTextSecondary)
+        } icon: {
+            Image(systemName: "message.badge").foregroundStyle(Color.hubPrimary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color.hubSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var recentActivity: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Recent activity")
+                .font(.headline)
+                .foregroundStyle(Color.hubPrimary)
+            if let summary, !summary.recentActivity.isEmpty {
+                ForEach(summary.recentActivity) { row in
+                    HStack(alignment: .top) {
+                        Text(row.summary)
+                            .font(.caption)
+                            .foregroundStyle(.white)
+                        Spacer()
+                        Text(row.createdAt.asFormattedDate())
+                            .font(.caption2)
+                            .foregroundStyle(Color.hubTextSecondary)
+                    }
+                    .padding(.vertical, 1)
+                }
+            } else {
+                Text("Board changes by you and your staff show up here.")
+                    .font(.caption)
+                    .foregroundStyle(Color.hubTextSecondary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
@@ -152,9 +239,21 @@ struct CoachHomeView: View {
         .background(Color.hubSurface)
         .clipShape(RoundedRectangle(cornerRadius: 14))
     }
+
+    // MARK: - Data
+
+    private func loadSummary() async {
+        guard let programId else { summary = nil; return }
+        do {
+            summary = try await CoachWorkspaceService.shared.homeSummary(programId: programId)
+            summaryFailed = false
+        } catch {
+            summaryFailed = true
+        }
+    }
 }
 
-/// Verified program card shared by Home, the Program tab and the switcher.
+/// Verified program card shared by the Program tab and the switcher.
 struct ProgramCardView: View {
     let context: CoachProgramContext
     var isCurrent = true

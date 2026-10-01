@@ -234,8 +234,21 @@ backend: `supabase/014-coach-onboarding.sql`; tests:
     videos, 30-day schedule, Save to Recruiting Board, stage menu, contact card locked until
     the program saves the athlete, report; detail opens record a profile view labeled with
     the verified program. Coach now sees Home · Discover · More.
-  - Next: 2D (Board tab, Home counts/activity, Program tab with staff + switcher) after
-    Danny's gate.
+  - **2D done 2026-10-01 — Coach Mode 2.0 code complete.** Tabs: **Home** (program header,
+    board counts by stage → Board, assigned-to-me, quick actions, recent staff activity,
+    "messages arrive in the next update" note when athletes have written) · **Discover** ·
+    **Board** (stage chips with counts, assigned-to-me / show-removed, swipe remove/restore,
+    context-menu stage/assign; detail gains tags ≤10×30, assignee from staff, private note
+    ≤2,000 author-only, per-prospect activity) · **Program** (card, switcher, verified staff
+    roster, membership, Account & Legal, Sign Out). More tab retired for coaches.
+    Privacy policy (app + md) describes coach discovery/contact unlock/profile views
+    (last updated 2026-10-01; website copy pending #13/#22). App Store review note 3
+    rewritten; "Social media capability" flagged for re-answer (#40).
+  - **Release gates before submitting 2.0:** #40 questionnaire answer, #18/#29 demo athlete +
+    demo coach, website legal copy, delete/re-key `tstark@mailinator.com`, then-current
+    reviewer notes. Enforcement flag stays OFF until 2.1 Messages (D15).
+  - Next: **2.1** (Messages, Notifications, saved-search alerts) — confirm spec §2.3 first;
+    `pg_cron` must be enabled for alerts.
 
 ## Tech Decisions Made
 - **iOS 17+ only** — uses `@Observable` macro, no Combine

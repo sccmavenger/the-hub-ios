@@ -75,31 +75,47 @@ private struct AthleteTabView: View {
 
 // MARK: - Coach Mode (approved coach)
 
-/// Phase 1 Coach Mode: Coach Home (verified program context) plus the shared
-/// More screen. No placeholder tabs — the Coach Workspace spec adds
-/// Discover / Recruiting Board / Messages / Program on top of this entry point.
+/// Coach Mode 2.0 tabs. Messages joins in 2.1 (W1/W2); no placeholder tabs.
+enum CoachTab: Hashable {
+    case home, discover, board, program
+}
+
+/// Coach Workspace shell: Home · Discover · Board · Program, all scoped to the
+/// selected verified program. Account/legal/sign-out live on the Program tab.
 private struct CoachTabView: View {
     @Environment(AuthViewModel.self) private var authViewModel
     @State private var programs = CoachProgramService.shared
+    @State private var selection: CoachTab = .home
 
     private var userId: String? {
         authViewModel.session?.user.id.uuidString
     }
 
     var body: some View {
-        TabView {
+        TabView(selection: $selection) {
             NavigationStack {
-                CoachHomeView()
+                CoachHomeView(tabSelection: $selection)
             }
             .tabItem { Label("Home", systemImage: "house") }
+            .tag(CoachTab.home)
 
             NavigationStack {
                 CoachDiscoverView()
             }
             .tabItem { Label("Discover", systemImage: "magnifyingglass") }
+            .tag(CoachTab.discover)
 
-            MoreView()
-                .tabItem { Label("More", systemImage: "ellipsis") }
+            NavigationStack {
+                CoachBoardView()
+            }
+            .tabItem { Label("Board", systemImage: "rectangle.stack") }
+            .tag(CoachTab.board)
+
+            NavigationStack {
+                CoachProgramView()
+            }
+            .tabItem { Label("Program", systemImage: "building.columns") }
+            .tag(CoachTab.program)
         }
         .tint(Color.hubPrimary)
         // Program contexts load once here; every coach screen reads

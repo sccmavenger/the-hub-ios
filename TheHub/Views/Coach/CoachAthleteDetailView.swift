@@ -20,6 +20,13 @@ struct CoachAthleteDetailView: View {
     @State private var showReport = false
     @State private var showRemoveConfirm = false
 
+    // Board section (2D)
+    @State private var tags: [String] = []
+    @State private var staff: [ProgramStaffMember] = []
+    @State private var noteDraft = ""
+    @State private var noteSaved = false
+    @State private var activity: [BoardActivity] = []
+
     private struct PhotoViewerContext: Identifiable {
         let id = UUID()
         let index: Int
@@ -37,6 +44,11 @@ struct CoachAthleteDetailView: View {
                     VStack(spacing: 16) {
                         header(detail.athlete)
                         boardActions(detail)
+                        if let entry = detail.board, !entry.isRemoved {
+                            boardDetails(entry)
+                            privateNoteCard
+                            if !activity.isEmpty { activityCard }
+                        }
                         if let bio = detail.athlete.bio, !bio.isBlank {
                             sectionCard("About") {
                                 Text(bio).font(.subheadline).foregroundStyle(.white)
@@ -198,6 +210,89 @@ struct CoachAthleteDetailView: View {
         }
     }
 
+    /// Tags and assignee: shared with the whole staff (W5).
+    private func boardDetails(_ entry: BoardEntry) -> some View {
+        sectionCard("Board details") {
+            Text("Tags")
+                .font(.caption)
+                .foregroundStyle(Color.hubTextSecondary)
+            TagEditor(tags: $tags) { cleaned in
+                Task { await saveTags(entry, cleaned) }
+            }
+
+            Divider().background(Color.hubBorder)
+
+            HStack {
+                Text("Assigned to")
+                    .font(.caption)
+                    .foregroundStyle(Color.hubTextSecondary)
+                Spacer()
+                Menu {
+                    Button("Unassigned") { Task { await assign(entry, nil) } }
+                    ForEach(staff) { member in
+                        Button {
+                            Task { await assign(entry, member.userId) }
+                        } label: {
+                            if member.userId == entry.assignedTo {
+                                Label(member.isMe ? "\(member.displayName) (you)" : member.displayName, systemImage: "checkmark")
+                            } else {
+                                Text(member.isMe ? "\(member.displayName) (you)" : member.displayName)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(entry.assignedToName ?? "Unassigned")
+                        Image(systemName: "chevron.up.chevron.down").font(.caption2)
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(Color.hubPrimary)
+                }
+                .disabled(isWorking || staff.isEmpty)
+            }
+        }
+    }
+
+    /// Author-only (D11). Not shared with staff or admins.
+    private var privateNoteCard: some View {
+        sectionCard("Private note") {
+            Text("Only you can see this. It stays with you if you change programs.")
+                .font(.caption)
+                .foregroundStyle(Color.hubTextSecondary)
+            HubMultilineField(label: "", text: $noteDraft, placeholder: "Your evaluation, reminders, follow-ups…", lineRange: 3...10, maxLength: BoardEntry.maxNoteLength)
+            HStack {
+                Text("\(noteDraft.count)/\(BoardEntry.maxNoteLength)")
+                    .font(.caption2)
+                    .foregroundStyle(noteDraft.count > BoardEntry.maxNoteLength ? Color.hubError : Color.hubTextSecondary)
+                Spacer()
+                if noteSaved {
+                    Label("Saved", systemImage: "checkmark").font(.caption).foregroundStyle(Color.hubSuccess)
+                }
+                Button("Save note") { Task { await saveNote() } }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(Color.hubPrimary)
+                    .disabled(isWorking || noteDraft.trimmed == (detail?.privateNote ?? ""))
+            }
+        }
+    }
+
+    private var activityCard: some View {
+        sectionCard("Activity") {
+            ForEach(activity) { row in
+                HStack(alignment: .top) {
+                    Text(row.summary)
+                        .font(.caption)
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Text(row.createdAt.asFormattedDate())
+                        .font(.caption2)
+                        .foregroundStyle(Color.hubTextSecondary)
+                }
+                .padding(.vertical, 1)
+            }
+        }
+    }
+
     private func academics(_ athlete: CoachAthleteCard) -> some View {
         sectionCard("Academics") {
             HStack(spacing: 24) {
@@ -340,9 +435,21 @@ struct CoachAthleteDetailView: View {
     private func load() async {
         guard let programId else { unavailable = true; return }
         do {
-            detail = try await CoachWorkspaceService.shared.detail(programId: programId, athleteId: athleteId)
+            let fetched = try await CoachWorkspaceService.shared.detail(programId: programId, athleteId: athleteId)
+            detail = fetched
+            tags = fetched.board?.tags ?? []
+            noteDraft = fetched.privateNote ?? ""
+            noteSaved = false
             loadFailed = false
             unavailable = false
+            if let entry = fetched.board, !entry.isRemoved {
+                async let staffTask = CoachWorkspaceService.shared.staff(programId: programId)
+                async let activityTask = CoachWorkspaceService.shared.boardActivity(programId: programId, entryId: entry.id, limit: 10)
+                staff = (try? await staffTask) ?? []
+                activity = (try? await activityTask) ?? []
+            } else {
+                activity = []
+            }
         } catch {
             if let pg = error as? PostgrestError, pg.message == "not found" || pg.message == "not authorized" {
                 unavailable = true
@@ -380,6 +487,49 @@ struct CoachAthleteDetailView: View {
             detail?.board = updated
         } catch {
             errorMessage = "Couldn't change the stage."
+        }
+    }
+
+    private func saveTags(_ entry: BoardEntry, _ cleaned: [String]) async {
+        guard cleaned != entry.tags else { return }
+        isWorking = true
+        errorMessage = nil
+        defer { isWorking = false }
+        do {
+            let updated = try await CoachWorkspaceService.shared.setTags(entryId: entry.id, tags: cleaned)
+            detail?.board = updated
+            tags = updated.tags
+        } catch {
+            tags = entry.tags
+            errorMessage = "Couldn't save tags. \(error.localizedDescription)"
+        }
+    }
+
+    private func assign(_ entry: BoardEntry, _ user: String?) async {
+        guard entry.assignedTo != user else { return }
+        isWorking = true
+        errorMessage = nil
+        defer { isWorking = false }
+        do {
+            let updated = try await CoachWorkspaceService.shared.assign(entryId: entry.id, to: user)
+            detail?.board = updated
+        } catch {
+            errorMessage = "Couldn't update the assignment."
+        }
+    }
+
+    private func saveNote() async {
+        guard let userId else { return }
+        isWorking = true
+        errorMessage = nil
+        defer { isWorking = false }
+        do {
+            let saved = try await CoachWorkspaceService.shared.savePrivateNote(coachUserId: userId, athleteId: athleteId, body: noteDraft)
+            detail?.privateNote = saved?.body
+            noteDraft = saved?.body ?? ""
+            noteSaved = true
+        } catch {
+            errorMessage = "Couldn't save your note. \(error.localizedDescription)"
         }
     }
 

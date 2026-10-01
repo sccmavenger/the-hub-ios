@@ -113,6 +113,19 @@ struct CoachWorkspaceTests {
         #expect(rows[1].summary == "Coach One assigned Jordan to Coach Two")
     }
 
+    @Test("Tag cleaning mirrors the server: trim, collapse, dedupe, limits")
+    func tagCleaning() throws {
+        #expect(try BoardTags.clean([" Shooter ", "shooter", "Length", "", "   "]) == ["Shooter", "Length"])
+        #expect(try BoardTags.clean(["two   words"]) == ["two words"])
+        #expect(throws: BoardTags.ValidationError.tooMany) {
+            try BoardTags.clean((1...11).map { "t\($0)" })
+        }
+        #expect(throws: BoardTags.ValidationError.tooLong(String(repeating: "x", count: 31))) {
+            try BoardTags.clean([String(repeating: "x", count: 31)])
+        }
+        #expect(try BoardTags.clean((1...10).map { "t\($0)" }).count == 10)
+    }
+
     @Test("Pipeline stages match the database check constraint")
     func stageRawValues() {
         #expect(PipelineStage.allCases.map(\.rawValue) == ["watching", "evaluating", "contacted", "offered", "passed"])
