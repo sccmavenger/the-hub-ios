@@ -61,8 +61,9 @@ FOR ATHLETES AND FAMILIES
 • Notifications: a new bell shows saves, messages, and alerts, with mark-all-read and an optional message-preview setting.
 • Edit Profile is now a checklist — every section collapses and shows what's complete.
 • Import your game schedule from your school's calendar (.ics) file.
+• Share your profile card from Profile Preview to Messages, Instagram, or anywhere else.
 • Stronger privacy for minors: a coach never sees an under-18 athlete's own phone or email.
-• Fixes: NCAA Journey no longer jumps when you switch divisions; My Colleges no longer scrolls sideways."""
+• Fixes: NCAA Journey no longer jumps when you switch divisions; My Colleges no longer scrolls sideways; delete confirmations are clearer."""
 
 REVIEW_NOTES = """The Hub is a free recruiting-profile platform for US high school basketball players (ages 13-18), their parents, and the college coaches who recruit them. Key context:
 

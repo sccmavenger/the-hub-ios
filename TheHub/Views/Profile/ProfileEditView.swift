@@ -333,13 +333,15 @@ struct ProfileEditView: View {
                 await viewModel.importEvents(chosen)
             }
         }
-        .confirmationDialog(
+        // Alerts, not confirmation dialogs: on iOS 27 a dialog attached to a
+        // scroll view renders as a popover at the top of the screen, far from
+        // the row that was tapped, with no Cancel (TestFlight feedback 2026-10-01).
+        .alert(
             "Delete this video?",
             isPresented: .init(
                 get: { videoToDelete != nil },
                 set: { if !$0 { videoToDelete = nil } }
-            ),
-            titleVisibility: .visible
+            )
         ) {
             Button("Delete", role: .destructive) {
                 if let video = videoToDelete {
@@ -347,14 +349,15 @@ struct ProfileEditView: View {
                 }
             }
             Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(videoToDelete?.title.map { "“\($0)” will be removed from your profile." } ?? "The video link will be removed from your profile.")
         }
-        .confirmationDialog(
+        .alert(
             "Delete this game?",
             isPresented: .init(
                 get: { eventToDelete != nil },
                 set: { if !$0 { eventToDelete = nil } }
-            ),
-            titleVisibility: .visible
+            )
         ) {
             Button("Delete", role: .destructive) {
                 if let event = eventToDelete {
@@ -362,6 +365,10 @@ struct ProfileEditView: View {
                 }
             }
             Button("Cancel", role: .cancel) {}
+        } message: {
+            if let event = eventToDelete {
+                Text("\(event.eventDate.asFormattedDate())\(event.opponent.map { " · \($0)" } ?? "") will be removed from your schedule.")
+            }
         }
         .alert("Profile Saved", isPresented: $viewModel.didSave) {
             Button("OK") {}
@@ -390,8 +397,10 @@ struct ProfileEditView: View {
                     .frame(width: 72, height: 72)
                     .clipShape(Circle())
 
+                // Read actor-isolated state here, not inside the picker's Sendable label closure.
+                let isUploadingProfilePhoto = viewModel.isUploadingProfilePhoto
                 PhotosPicker(selection: $profilePhotoItem, matching: .images) {
-                    if viewModel.isUploadingProfilePhoto {
+                    if isUploadingProfilePhoto {
                         ProgressView()
                             .tint(Color.hubPrimary)
                     } else {
@@ -400,7 +409,7 @@ struct ProfileEditView: View {
                             .foregroundStyle(Color.hubPrimary)
                     }
                 }
-                .disabled(viewModel.isUploadingProfilePhoto)
+                .disabled(isUploadingProfilePhoto)
 
                 Spacer()
             }
@@ -436,12 +445,16 @@ struct ProfileEditView: View {
                 }
             }
 
+            // Read actor-isolated state here, not inside the picker's Sendable label closure.
+            let galleryProgress = viewModel.galleryUploadProgress
+            let isUploadingGallery = viewModel.isUploadingGalleryPhoto
+            let canAddGallery = viewModel.canAddGalleryPhoto
             PhotosPicker(
                 selection: $galleryPhotoItems,
                 maxSelectionCount: max(ProfileEditViewModel.galleryLimit - viewModel.photos.count, 0),
                 matching: .images
             ) {
-                if let progress = viewModel.galleryUploadProgress {
+                if let progress = galleryProgress {
                     HStack(spacing: 8) {
                         ProgressView()
                             .tint(Color.hubPrimary)
@@ -450,18 +463,18 @@ struct ProfileEditView: View {
                             .foregroundStyle(Color.hubTextSecondary)
                     }
                     .frame(maxWidth: .infinity)
-                } else if viewModel.isUploadingGalleryPhoto {
+                } else if isUploadingGallery {
                     ProgressView()
                         .tint(Color.hubPrimary)
                         .frame(maxWidth: .infinity)
                 } else {
                     Label("Add Photos", systemImage: "plus")
                         .font(.subheadline.bold())
-                        .foregroundStyle(viewModel.canAddGalleryPhoto ? Color.hubPrimary : Color.hubTextSecondary)
+                        .foregroundStyle(canAddGallery ? Color.hubPrimary : Color.hubTextSecondary)
                         .frame(maxWidth: .infinity)
                 }
             }
-            .disabled(!viewModel.canAddGalleryPhoto || viewModel.isUploadingGalleryPhoto)
+            .disabled(!canAddGallery || isUploadingGallery)
         }
         .onChange(of: galleryPhotoItems) {
             let items = galleryPhotoItems

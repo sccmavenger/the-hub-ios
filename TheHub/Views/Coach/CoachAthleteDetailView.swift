@@ -101,8 +101,9 @@ struct CoachAthleteDetailView: View {
                 ReportSheet(reporterUserId: userId, targetType: "athlete_profile", targetId: athleteId, athleteId: athleteId, reportedUserId: nil)
             }
         }
-        .confirmationDialog("Remove from the recruiting board?", isPresented: $showRemoveConfirm, titleVisibility: .visible) {
+        .alert("Remove from the recruiting board?", isPresented: $showRemoveConfirm) {
             Button("Remove", role: .destructive) { Task { await remove() } }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text("Your staff will no longer see this athlete on the board, and contact details lock again. You can restore them later.")
         }

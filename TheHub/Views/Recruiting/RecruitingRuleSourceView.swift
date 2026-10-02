@@ -12,15 +12,17 @@ struct RecruitingRuleSourceView: View {
         if decision.sourceLink != nil || decision.lastVerifiedDate != nil || decision.sourceReference != nil {
             VStack(alignment: .leading, spacing: 3) {
                 if let url = decision.sourceLink {
+                    // One Text (title + inline arrow) so the row wraps like prose. The
+                    // earlier HStack{Text, Image} measured a fraction of a point wider
+                    // than its container, which made the whole Colleges page horizontally
+                    // scrollable on iOS 27 (TestFlight feedback 2026-09-30 / 10-01).
                     Link(destination: url) {
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            Text(decision.sourceTitle ?? "Official source")
-                                .multilineTextAlignment(.leading)
-                            Image(systemName: "arrow.up.right")
-                        }
-                        .font(.caption.bold())
-                        .foregroundStyle(Color.hubPrimary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        (Text(decision.sourceTitle ?? "Official source") + Text(" ") + Text(Image(systemName: "arrow.up.right")))
+                            .font(.caption.bold())
+                            .foregroundStyle(Color.hubPrimary)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .accessibilityLabel("Open official source: \(decision.sourceTitle ?? "governing body document")")
                 }

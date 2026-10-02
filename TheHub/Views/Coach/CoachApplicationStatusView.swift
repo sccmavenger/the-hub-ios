@@ -39,14 +39,14 @@ struct CoachApplicationStatusView: View {
                 CoachApplicationEditView(request: request)
             }
         }
-        .confirmationDialog(
+        .alert(
             "Withdraw your application?",
-            isPresented: $showWithdrawConfirm,
-            titleVisibility: .visible
+            isPresented: $showWithdrawConfirm
         ) {
             Button("Withdraw Application", role: .destructive) {
                 Task { await withdraw() }
             }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text("Your account stays active. You can submit a new application later.")
         }

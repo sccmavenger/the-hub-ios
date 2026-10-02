@@ -41,8 +41,34 @@ struct PublicProfileView: View {
         }
         .navigationTitle("Profile Preview")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                // Share = a rendered image of the public header + a line of text.
+                // There is no public profile URL to share (profiles are visible
+                // only to approved coaches), so nothing private can leak.
+                if let shareImage {
+                    ShareLink(
+                        item: Image(uiImage: shareImage),
+                        subject: Text("\(athlete.fullName) — The Hub"),
+                        message: Text(ProfileShare.message(for: athlete)),
+                        preview: SharePreview("\(athlete.fullName) · The Hub", image: Image(uiImage: shareImage))
+                    ) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .accessibilityLabel("Share profile")
+                } else {
+                    ProgressView().tint(Color.hubPrimary).controlSize(.small)
+                }
+            }
+        }
         .task { await load() }
+        .task(id: athlete.id) {
+            let photo = await ProfileShare.photo(for: athlete)
+            shareImage = ProfileShare.render(athlete: athlete, photo: photo)
+        }
     }
+
+    @State private var shareImage: UIImage?
 
     private func load() async {
         async let photos = AthleteService.shared.fetchPhotos(athleteId: athlete.id)

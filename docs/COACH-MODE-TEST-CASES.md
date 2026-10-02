@@ -86,9 +86,11 @@ published and the same gender as the coach's program (men's).
 | # | Steps | Expect |
 |---|-------|--------|
 | H1 | Athlete: More → NCAA Journey → tap D1, D2, D3, Unsure repeatedly. | Pills are at the top; content below changes without the page jumping. |
-| H2 | Athlete: My Colleges tab → drag sideways. | No horizontal movement; the status card fits the screen; long source links wrap. |
+| H2 | Athlete: My Colleges tab → drag sideways, hard, both directions. Also NCAA Journey. | No horizontal movement at all, not even a rubber-band; long source links wrap as text with the arrow inline. |
 | H3 | Athlete: Profile tab. | Sections collapsed with "x of y" chips and "N of 12 sections complete"; Expand all / Collapse all works; tapping a header toggles with animation. |
 | H4 | Profile → Game Schedule → Import from a calendar file → pick an .ics (export one from the school site or Apple Calendar). | Review list with dates, opponents, locations; past games and duplicates pre-unchecked; Import adds them; re-import skips duplicates. |
+| H5 | Profile → Game Schedule → trash icon on a game. Also: Highlight Videos trash, My Colleges trash, coach "Remove from board", "Block" in a thread. | A centered alert naming the item, with Delete/Remove/Block and Cancel. No popover at the top of the screen. |
+| H6 | Home → Profile Preview → share icon (top right, appears after a moment). | Share sheet with a 4:5 card: photo, name, school line, chips, The Hub footer, plus a one-line message ending in thehubsh.net. Send it to yourself in Messages and check the image renders. |
 
 ## I. Admin review loop (Phase 1)
 

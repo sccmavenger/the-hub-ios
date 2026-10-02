@@ -47,6 +47,10 @@ final class AuthViewModel {
 
         Task {
             for await (_, newSession) in supabase.auth.authStateChanges {
+                // With emitLocalSessionAsInitialSession the first event can carry
+                // an expired stored session; the SDK refreshes it right after and
+                // emits again (or signs out). Don't route on the dead token.
+                if let candidate = newSession, candidate.isExpired { continue }
                 self.session = newSession
                 if let userId = newSession?.user.id.uuidString {
                     await loadRoles(userId: userId)

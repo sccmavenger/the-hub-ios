@@ -145,8 +145,9 @@ struct CoachThreadView: View {
         } message: {
             Text(actionError ?? "")
         }
-        .confirmationDialog("Block this athlete?", isPresented: $showBlockConfirm, titleVisibility: .visible) {
+        .alert("Block this athlete?", isPresented: $showBlockConfirm) {
             Button("Block", role: .destructive) { Task { await setBlocked(true) } }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text("Neither of you will be able to message the other. You can unblock from this menu.")
         }

@@ -40,7 +40,7 @@ source for anything not mentioned here.
 
 | # | Gate | Owner | Status |
 |---|------|-------|--------|
-| G1 | **Build 3 contains the TestFlight-feedback fixes.** Verified: the build 3 archive (`~/Library/Developer/Xcode/Archives/2026-10-01/TheHub 10-1-26, 11.45 AM.xcarchive`) was created 11:45:51 CDT; the last fix file was saved 11:33:05 CDT. | Claude | ☑ |
+| G1 | **Attach a build that contains every fix.** Build 3 (archived 11:45 CDT) has F1–F7 but **not** the 21:00 CDT fixes for F8 share, F9 sideways scroll (root cause), F10 delete alerts, or the SDK session option. **Danny: bump to build 4 in Xcode, archive, upload, then attach build 4 to 1.3** (Claude can re-attach by API once it finishes processing: `PATCH appStoreVersions/<id>/relationships/build`). | Danny | ☐ build 4 needed |
 | G2 | Device test pass per `docs/COACH-MODE-TEST-CASES.md` (at minimum groups C, F, G, H). | Danny | ☐ |
 | G3 | Demo **athlete** and demo **coach** accounts seeded (§4 below). TECH-DEBT #18/#29. | Claude | ☑ 2026-10-01 |
 | G4 | Social-media age-rating answer decided (§3). TECH-DEBT #40. | Claude (recommendation applied; Danny may flip) | ☑ Yes |
@@ -114,9 +114,11 @@ FOR ATHLETES AND FAMILIES
 • Notifications: a new bell shows saves, messages, and alerts, with mark-all-read and an optional message-preview setting.
 • Edit Profile is now a checklist — every section collapses and shows what's complete.
 • Import your game schedule from your school's calendar (.ics) file.
+• Share your profile card from Profile Preview to Messages, Instagram, or anywhere else.
 • Stronger privacy for minors: a coach never sees an under-18 athlete's own phone or email.
-• Fixes: NCAA Journey no longer jumps when you switch divisions; My Colleges no longer scrolls sideways.
+• Fixes: NCAA Journey no longer jumps when you switch divisions; My Colleges no longer scrolls sideways; delete confirmations are clearer.
 ```
+(The share line and "delete confirmations" were added in the evening pass; re-run `scripts/asc-apply-1.3.py` to push them.)
 
 ### Keywords — **KEEP** (91/100)
 ```
@@ -317,4 +319,5 @@ Never paste the demo passwords into chat for the API route; put them in
 |---|---|---|---|
 | 2026-10-01 | 1.3 version created in ASC; build 3 attached; metadata copied from 1.2 (review notes still web-only wording) | Danny | prepare for submission |
 | 2026-10-01 | Demo athlete + coach seeded (`scripts/seed-demo-accounts.py`); promotional text, description, What's New, review notes + demo credentials, manual release, social-media = Yes applied via `scripts/asc-apply-1.3.py`; read-back verified | Claude | ready pending gates G2, G5, G6, G8 |
+| 2026-10-01 (evening) | Three new TestFlight notes on build 3 handled (F8 share, F9 sideways scroll root cause, F10 delete popover); What's New already lists sharing-neutral items — add "Share your profile card from Profile Preview" to What's New when build 4 is attached (`scripts/asc-apply-1.3.py` text updated) | Claude | **build 4 required** (gate G1 reopened) |
 | | | | |

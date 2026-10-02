@@ -77,6 +77,9 @@ struct NCAAJourneyView: View {
                     }
                     .padding(.horizontal)
                     .padding(.bottom, 24)
+                    // Same guard as My Colleges: never let a fractionally wide child
+                    // make the page pannable sideways.
+                    .containerRelativeFrame(.horizontal)
                 }
                 // The decimal pad has no return key, so without this (and the
                 // Done accessory below) the GPA keyboard could not be

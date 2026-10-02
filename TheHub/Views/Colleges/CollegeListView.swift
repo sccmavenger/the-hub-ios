@@ -72,14 +72,14 @@ struct CollegeListView: View {
                 }
             }
             // Deletes are permanent (notes included) — a bare 16pt trash icon
-            // was too easy to hit by accident, so confirm first.
-            .confirmationDialog(
+            // was too easy to hit by accident, so confirm first. An alert, not a
+            // confirmation dialog: iOS 27 shows dialogs as a top-of-screen popover.
+            .alert(
                 "Remove \(collegeToDelete?.collegeName ?? "this school")?",
                 isPresented: .init(
                     get: { collegeToDelete != nil },
                     set: { if !$0 { collegeToDelete = nil } }
-                ),
-                titleVisibility: .visible
+                )
             ) {
                 Button("Remove", role: .destructive) {
                     if let interest = collegeToDelete {
@@ -174,6 +174,10 @@ struct CollegeListView: View {
             }
             .padding(.horizontal)
             .padding(.bottom, 24)
+            // Pin the content to exactly the scroll view's width. Any child that
+            // measures even 0.2 pt wider than the screen turns a vertical
+            // ScrollView into a horizontally pannable one (seen on iOS 27).
+            .containerRelativeFrame(.horizontal)
         }
         .refreshable { await load() }
     }

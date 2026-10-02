@@ -336,14 +336,14 @@ struct ThreadDetailView: View {
                 .accessibilityLabel("Conversation options")
             }
         }
-        .confirmationDialog(
+        .alert(
             "Block this coach?",
-            isPresented: $showBlockConfirm,
-            titleVisibility: .visible
+            isPresented: $showBlockConfirm
         ) {
             Button("Block", role: .destructive) {
                 Task { await setBlocked(true) }
             }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text("They won't be able to message you, and their messages will be hidden. You can unblock them anytime from this menu or Account.")
         }

@@ -75,10 +75,9 @@ struct CoachApplicationDetailView: View {
                 }
             }
         }
-        .confirmationDialog(
+        .alert(
             membershipDialogTitle,
-            isPresented: Binding(get: { membershipAction != nil }, set: { if !$0 { membershipAction = nil } }),
-            titleVisibility: .visible
+            isPresented: Binding(get: { membershipAction != nil }, set: { if !$0 { membershipAction = nil } })
         ) {
             if let action = membershipAction {
                 Button(action.status == .verified ? "Reinstate" : action.status.displayName.capitalized,
@@ -86,6 +85,7 @@ struct CoachApplicationDetailView: View {
                     Task { await setMembership(action.membership, to: action.status) }
                 }
             }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text(membershipDialogMessage)
         }
